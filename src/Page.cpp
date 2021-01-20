@@ -1,8 +1,9 @@
 #include "Page.hpp"
 #include <iostream>
+#include <bit_converter/bit_converter.hpp>
+
 using std::cout;
 using std::endl;
-
 using std::holds_alternative;
 
 Record::Record(const vector<Value> &values) : values{values} {}
@@ -56,6 +57,7 @@ u16 Record::ComputeSize(const vector<Column> &columns) const {
   }
   return totalSize;
 }
+
 Column::Column(bool nullable, TypeTag type, string name)
     : nullable{nullable}, type{type}, name{name} {}
 void MakeBlock(ofstream &stream, vector<u8> &bytes) {
@@ -63,6 +65,7 @@ void MakeBlock(ofstream &stream, vector<u8> &bytes) {
   stream.write(reinterpret_cast<char *>(bytes.data()), bytes.size());
   stream.seekp(pos);
 }
+
 void LoadBlock(ifstream &stream, Block &block) {
   auto pos = stream.tellg();
   stream.read(reinterpret_cast<char *>(block.bytes.data()), block.bytes.size());
@@ -72,50 +75,36 @@ void LoadBlock(ifstream &stream, Block &block) {
 Block::Block(size_t pageSize) : bytes(pageSize), pos{0} {}
 
 u16 Block::ReadU16() {
-  u16 b1 = bytes.at(pos);
-  u16 b2 = bytes.at(pos + 1);
-  pos = pos + 2;
-  return (b1 << 8) + b2;
+  u16 u = bit_converter::bytes_to_u16(bytes.begin() + pos, true);
+  pos = pos + sizeof(u16);
+  return u;
 }
 
 i64 Block::ReadI64() {
-  i64 i = 0;
-  for (int k = 0; k < static_cast<int>(sizeof(i64)); k++) {
-    i = i + (Get() << (56 - k * 8));
-  }
+  i64 i = bit_converter::bytes_to_i64(bytes.begin() + pos, true);
+  pos = pos + sizeof(i64);
   return i;
 }
 
+f64 Block::ReadF64() {
+  f64 f = bit_converter::bytes_to_f64(bytes.begin() + pos, true);
+  pos = pos + sizeof(f64);
+  return f;
+}
+
 void Block::WriteU16(u16 u) {
-  Put(static_cast<u8>((u >> 8) & 0xFF));
-  Put(static_cast<u8>(u & 0xFF));
+  bit_converter::u16_to_bytes(u, true, bytes.begin() + pos);
+  pos = pos + sizeof(u16);
 }
 
 void Block::WriteI64(i64 i) {
-  for (int k = 0; k < static_cast<int>(sizeof(i64)); k++) {
-    Put(static_cast<u8>((i >> (56 - k * 8)) & 0xFF));
-  }
+  bit_converter::i64_to_bytes(i, true, bytes.begin() + pos);
+  pos = pos + sizeof(i64);
 }
 
 void Block::WriteF64(f64 f) {
-  i32 exponent;
-  f64 mantissa = frexp(f, &exponent);
-  vector<u8> bits;
-  bits.push_back(static_cast<u8>(f > 0 ? 1 : 0));
-  bits.push_back(static_cast<u8>((exponent - 1) / 256));
-  bits.push_back(static_cast<u8>((exponent - 1) % 256));
-  cout << "exp: " << (exponent - 1) << endl;
-  for (int i = 0; i < 24; i++) {
-    if (mantissa >= 1) {
-      cout << 1 << "  ";
-      mantissa = mantissa - 1;
-      mantissa = mantissa * 2;
-    } else {
-      cout << 0 << "  ";
-      mantissa = mantissa * 2;
-    }
-  }
-  cout << endl;
+  bit_converter::f64_to_bytes(f, true, bytes.begin() + pos);
+  pos = pos + sizeof(f64);
 }
 
 Record Block::ReadRecord(vector<Column> &columns) {
@@ -126,6 +115,11 @@ Record Block::ReadRecord(vector<Column> &columns) {
     case TypeTag::INTEGER: {
       i64 i = ReadI64();
       record.values.emplace_back(i);
+      break;
+    }
+    case TypeTag::REAL: {
+      f64 f = ReadF64();
+      record.values.emplace_back(f);
       break;
     }
     case TypeTag::TEXT: {
@@ -143,8 +137,11 @@ Record Block::ReadRecord(vector<Column> &columns) {
 void Block::SaveToFile(ofstream &stream) {
   stream.write(reinterpret_cast<char *>(bytes.data()), bytes.size());
 }
+void Block::LoadFromFile(ifstream &stream) {
+  stream.read(reinterpret_cast<char *>(bytes.data()), bytes.size());
+}
 
-Page::Page(Block &block) {
+Page::Page(const vector<Column> &columns, Block &block) : columns{columns} {
   header.numOfEntries = block.ReadU16();
   header.endOfFreeSpace = block.ReadU16();
   header.recordInfoArray.reserve(header.numOfEntries);
@@ -155,9 +152,10 @@ Page::Page(Block &block) {
   }
   for (const auto &recordInfo : header.recordInfoArray) {
     block.pos = recordInfo.location;
-    records.push_back(block.ReadRecord(columns));
+    records.push_back(block.ReadRecord(this->columns));
   }
 }
+
 Page::Page(const vector<Column> columns, const vector<Record> &records,
            size_t pageSize)
     : columns{columns}, records{records} {
@@ -172,6 +170,7 @@ Page::Page(const vector<Column> columns, const vector<Record> &records,
   }
   header.endOfFreeSpace = curPos;
 }
+
 void Page::Write(Block &block) {
   block.WriteU16(header.numOfEntries);
   block.WriteU16(header.endOfFreeSpace);
@@ -185,11 +184,16 @@ void Page::Write(Block &block) {
     WriteRecord(block, records.at(i));
   }
 }
+
 void Page::WriteRecord(Block &block, const Record &record) {
   for (size_t i = 0; i < columns.size(); i++) {
     switch (columns.at(i).type) {
     case TypeTag::INTEGER: {
       block.WriteI64(std::get<i64>(record.values.at(i)));
+      break;
+    }
+    case TypeTag::REAL: {
+      block.WriteF64(std::get<f64>(record.values.at(i)));
       break;
     }
     case TypeTag::TEXT: {
@@ -202,5 +206,21 @@ void Page::WriteRecord(Block &block, const Record &record) {
     }
     default: { throw "not supported yet"; }
     }
+  }
+}
+
+bool Page::AddRecord(const Record &record) {
+  u16 size = record.ComputeSize(columns);
+  u16 remainingSpace = header.endOfFreeSpace -
+                       header.numOfEntries * 2 * sizeof(u16) + 2 * sizeof(u16);
+  if (remainingSpace > size) {
+    header.numOfEntries++;
+    header.recordInfoArray.push_back(
+        RecordInfo(header.endOfFreeSpace - size, size));
+    header.endOfFreeSpace = header.endOfFreeSpace - size;
+    records.push_back(record);
+    return true;
+  } else {
+    return false;
   }
 }

@@ -73,16 +73,13 @@ public:
   explicit Block(size_t pageSize);
   u16 ReadU16();
   i64 ReadI64();
+  f64 ReadF64();
   void WriteU16(u16 u);
   void WriteI64(i64 i);
   void WriteF64(f64 f);
   Record ReadRecord(vector<Column> &columns);
   void SaveToFile(ofstream& stream);
-  inline u8 Get() {
-    u8 b = bytes.at(pos);
-    pos++;
-    return b;
-  }
+  void LoadFromFile(ifstream& stream);
   inline void Put(u8 b) {
     bytes.at(pos) = b;
     pos++;
@@ -95,11 +92,12 @@ public:
   vector<Column> columns;
   vector<Record> records;
 
-  explicit Page(Block &block);
+  Page(const vector<Column>& columns, Block &block);
   Page(const vector<Column> columns, const vector<Record> &records,
        size_t pageSize);
   void Write(Block &block);
   void WriteRecord(Block &block, const Record &record);
+  bool AddRecord(const Record& record);
 };
 
 void MakeBlock(ofstream &stream, vector<u8> &bytes);
