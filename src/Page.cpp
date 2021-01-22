@@ -1,6 +1,7 @@
 #include "Page.hpp"
 #include <iostream>
 #include <bit_converter/bit_converter.hpp>
+#include <algorithm>
 
 using std::cout;
 using std::endl;
@@ -74,6 +75,12 @@ void LoadBlock(ifstream &stream, Block &block) {
 
 Block::Block(size_t pageSize) : bytes(pageSize), pos{0} {}
 
+u8 Block::ReadU8() {
+  u8 u = bytes.at(pos);
+  pos++;
+  return u;
+}
+
 u16 Block::ReadU16() {
   u16 u = bit_converter::bytes_to_u16(bytes.begin() + pos, true);
   pos = pos + sizeof(u16);
@@ -92,6 +99,11 @@ f64 Block::ReadF64() {
   return f;
 }
 
+void Block::WriteU8(u8 u) {
+  bytes.at(pos) = u;
+  pos++;
+}
+
 void Block::WriteU16(u16 u) {
   bit_converter::u16_to_bytes(u, true, bytes.begin() + pos);
   pos = pos + sizeof(u16);
@@ -106,11 +118,15 @@ void Block::WriteF64(f64 f) {
   bit_converter::f64_to_bytes(f, true, bytes.begin() + pos);
   pos = pos + sizeof(f64);
 }
+void Block::WriteText(const std::string s) {
+  std::transform(s.begin(), s.end(), bytes.begin() + pos,
+                 [](char c) { return static_cast<u8>(c); });
+  pos = pos + s.size();
+}
 
 Record Block::ReadRecord(vector<Column> &columns) {
   Record record;
-  record.values.reserve(columns.size());
-  for (const auto &col : columns) {
+  auto ReadValue = [this, &record](const Column &col) {
     switch (col.type) {
     case TypeTag::INTEGER: {
       i64 i = ReadI64();
@@ -130,6 +146,18 @@ Record Block::ReadRecord(vector<Column> &columns) {
       break;
     }
     default: { throw "not supported yet"; }
+    }
+  };
+  record.values.reserve(columns.size());
+  for (const auto &col : columns) {
+    if (col.nullable) {
+      if (ReadU8()) {
+        record.values.emplace_back(monostate());
+      } else {
+        ReadValue(col);
+      }
+    } else {
+      ReadValue(col);
     }
   }
   return record;
@@ -186,7 +214,7 @@ void Page::Write(Block &block) {
 }
 
 void Page::WriteRecord(Block &block, const Record &record) {
-  for (size_t i = 0; i < columns.size(); i++) {
+  auto WriteValue = [this, &block, &record](int i) {
     switch (columns.at(i).type) {
     case TypeTag::INTEGER: {
       block.WriteI64(std::get<i64>(record.values.at(i)));
@@ -199,12 +227,22 @@ void Page::WriteRecord(Block &block, const Record &record) {
     case TypeTag::TEXT: {
       auto text = std::get<string>(record.values.at(i));
       block.WriteU16(static_cast<u16>(text.size()));
-      for (char c : text) {
-        block.Put(static_cast<u8>(c));
-      }
+      block.WriteText(text);
       break;
     }
     default: { throw "not supported yet"; }
+    }
+  };
+  for (size_t i = 0; i < columns.size(); i++) {
+    if (columns.at(i).nullable) {
+      if (holds_alternative<monostate>(record.values.at(i))) {
+        block.WriteU8(1);
+      } else {
+        block.WriteU8(0);
+      }
+      WriteValue(i);
+    } else {
+      WriteValue(i);
     }
   }
 }

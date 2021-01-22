@@ -71,19 +71,18 @@ public:
   size_t pos;
 
   explicit Block(size_t pageSize);
+  u8 ReadU8();
   u16 ReadU16();
   i64 ReadI64();
   f64 ReadF64();
+  void WriteU8(u8 u);
   void WriteU16(u16 u);
   void WriteI64(i64 i);
   void WriteF64(f64 f);
+  void WriteText(const std::string s);
   Record ReadRecord(vector<Column> &columns);
   void SaveToFile(ofstream& stream);
   void LoadFromFile(ifstream& stream);
-  inline void Put(u8 b) {
-    bytes.at(pos) = b;
-    pos++;
-  }
 };
 
 class Page {

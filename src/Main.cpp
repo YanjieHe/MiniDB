@@ -12,11 +12,11 @@ const size_t PAGE_SIZE = 65536;
 json RecordToJson(const Record &record) {
   json obj;
   for (auto value : record.values) {
-    if (std::holds_alternative<monostate>(value)) {
+    if (holds_alternative<monostate>(value)) {
       obj.push_back(nullptr);
-    } else if (std::holds_alternative<i64>(value)) {
+    } else if (holds_alternative<i64>(value)) {
       obj.push_back(std::get<i64>(value));
-    } else if (std::holds_alternative<f64>(value)) {
+    } else if (holds_alternative<f64>(value)) {
       obj.push_back(std::get<f64>(value));
     } else {
       obj.push_back(std::get<string>(value));
@@ -36,7 +36,7 @@ void LoadPage() {
   Page page(columns, block);
   page.Write(block);
   for (const auto &record : page.records) {
-    std::cout << std::setw(4) << RecordToJson(record) << endl;
+    cout << std::setw(4) << RecordToJson(record) << endl;
   }
 }
 void SavePage() {
