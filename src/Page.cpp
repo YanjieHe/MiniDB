@@ -61,6 +61,17 @@ u16 Record::ComputeSize(const vector<Column> &columns) const {
 
 Column::Column(bool nullable, TypeTag type, string name)
     : nullable{nullable}, type{type}, name{name} {}
+
+bool IndexKeyLessThan(const Index::Key &x, const Index::Key &y) {
+  if (holds_alternative<i64>(x) && holds_alternative<i64>(y)) {
+    return std::get<i64>(x) < std::get<i64>(y);
+  } else if (holds_alternative<string>(x) && holds_alternative<string>(y)) {
+    return std::get<string>(x) < std::get<string>(y);
+  } else {
+    throw "the two index keys for comparision have two different types";
+  }
+}
+
 void MakeBlock(ofstream &stream, vector<u8> &bytes) {
   auto pos = stream.tellp();
   stream.write(reinterpret_cast<char *>(bytes.data()), bytes.size());

@@ -81,8 +81,8 @@ public:
   void WriteF64(f64 f);
   void WriteText(const std::string s);
   Record ReadRecord(vector<Column> &columns);
-  void SaveToFile(ofstream& stream);
-  void LoadFromFile(ifstream& stream);
+  void SaveToFile(ofstream &stream);
+  void LoadFromFile(ifstream &stream);
 };
 
 class Page {
@@ -91,14 +91,28 @@ public:
   vector<Column> columns;
   vector<Record> records;
 
-  Page(const vector<Column>& columns, Block &block);
+  Page(const vector<Column> &columns, Block &block);
   Page(const vector<Column> columns, const vector<Record> &records,
        size_t pageSize);
   void Write(Block &block);
   void WriteRecord(Block &block, const Record &record);
-  bool AddRecord(const Record& record);
+  bool AddRecord(const Record &record);
 };
 
+class Index {
+public:
+  typedef variant<i64, string> Key;
+  Key key;
+  u16 blockIndex;
+  u16 index;
+};
+
+class IndexPage {
+public:
+  Header header;
+  vector<Index> indexList;
+};
+bool IndexKeyLessThan(const Index::Key &x, const Index::Key &y);
 void MakeBlock(ofstream &stream, vector<u8> &bytes);
 void LoadBlock(ifstream &stream, Block &block);
 
