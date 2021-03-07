@@ -1,14 +1,18 @@
 /*
 MIT License
+
 Copyright (c) 2021 Yanjie He
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
+
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
+
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -62,12 +66,12 @@ template <typename OutputIt>
 inline OutputIt i32_to_bytes(int32_t value, bool is_big_endian,
                              OutputIt output_it) {
   if (is_big_endian) {
-    for (int i = 0; i < sizeof(int32_t); i++) {
+    for (int i = 0; i < static_cast<int>(sizeof(int32_t)); i++) {
       *output_it = static_cast<uint8_t>((value >> (24 - i * 8)) & 0xFF);
       output_it++;
     }
   } else {
-    for (int i = sizeof(int32_t) - 1; i >= 0; i--) {
+    for (int i = static_cast<int>(sizeof(int32_t)) - 1; i >= 0; i--) {
       *output_it = static_cast<uint8_t>((value >> (24 - i * 8)) & 0xFF);
       output_it++;
     }
@@ -91,12 +95,12 @@ template <typename OutputIt>
 inline OutputIt i64_to_bytes(int64_t value, bool is_big_endian,
                              OutputIt output_it) {
   if (is_big_endian) {
-    for (int i = 0; i < sizeof(int64_t); i++) {
+    for (int i = 0; i < static_cast<int>(sizeof(int64_t)); i++) {
       *output_it = static_cast<uint8_t>((value >> (56 - i * 8)) & 0xFF);
       output_it++;
     }
   } else {
-    for (int i = sizeof(int64_t) - 1; i >= 0; i--) {
+    for (int i = static_cast<int>(sizeof(int64_t)) - 1; i >= 0; i--) {
       *output_it = static_cast<uint8_t>((value >> (56 - i * 8)) & 0xFF);
       output_it++;
     }
