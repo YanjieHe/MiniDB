@@ -41,19 +41,6 @@ class Blob {
   // TO DO
 };
 
-enum class TypeTag { INTEGER, REAL, TEXT, BLOB };
-
-class DBColumn {
-public:
-  bool nullable;
-  TypeTag type;
-  string name;
-
-  DBColumn() = default;
-  DBColumn(bool nullable, TypeTag type, string name)
-      : nullable{nullable}, type{type}, name{name} {}
-};
-
 class DBRow {
 public:
   typedef variant<monostate, i64, f64, string, Blob> Value;
@@ -62,8 +49,6 @@ public:
 
   DBRow() = default;
   explicit DBRow(const vector<Value> &values) : values{values} {}
-
-  u16 ComputeSize(const vector<DBColumn> &columns) const;
 };
 
 json DBRowToJson(const DBRow &record);

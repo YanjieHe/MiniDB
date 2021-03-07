@@ -2,6 +2,7 @@
 #define BLOCK_HPP
 #include <fstream>
 #include "DBRow.hpp"
+#include "DBColumn.hpp"
 
 using std::ofstream;
 using std::ifstream;
@@ -26,6 +27,6 @@ public:
   void LoadFromFile(ifstream &stream);
 };
 
-void WriteBlock(ofstream &stream, Block& block);
+void WriteBlock(ofstream &stream, Block &block);
 void LoadBlock(ifstream &stream, Block &block);
 #endif // BLOCK_HPP

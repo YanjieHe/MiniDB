@@ -40,7 +40,7 @@ Page::Page(const vector<DBColumn> columns, const vector<DBRow> &records,
   header.recordInfoArray.reserve(header.numOfEntries);
   size_t curPos = pageSize;
   for (size_t i = 0; i < header.numOfEntries; i++) {
-    u16 size = records.at(i).ComputeSize(columns);
+    u16 size = ComputeRowSize(records.at(i), columns);
     u16 location = curPos - size;
     curPos = location;
     header.recordInfoArray.emplace_back(location, size);
@@ -97,7 +97,7 @@ void Page::WriteRecord(Block &block, const DBRow &record) {
 }
 
 bool Page::AddRecord(const DBRow &record) {
-  u16 size = record.ComputeSize(columns);
+  u16 size = ComputeRowSize(record, columns);
   u16 remainingSpace = header.endOfFreeSpace -
                        header.numOfEntries * 2 * sizeof(u16) + 2 * sizeof(u16);
   if (remainingSpace > size) {
