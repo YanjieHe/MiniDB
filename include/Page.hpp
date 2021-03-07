@@ -13,14 +13,14 @@ public:
   Page(const vector<DBColumn> columns, const vector<DBRow> &records,
        size_t pageSize);
   void Write(Block &block);
-  void WriteRecord(Block &block, const DBRow &record);
-  bool AddRecord(const DBRow &record);
+  void WriteRow(Block &block, const DBRow &row);
+  bool AddRow(const DBRow &row);
 };
 
 class Index {
 public:
   typedef variant<i64, string> Key;
-  Key key;
+  vector<Key> keys;
   u16 blockIndex;
   u16 index;
 };
@@ -30,6 +30,7 @@ public:
   Header header;
   vector<Index> indexList;
 };
+
 bool IndexKeyLessThan(const Index::Key &x, const Index::Key &y);
 
 #endif // MINIDB_PAGE_HPP

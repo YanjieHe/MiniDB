@@ -58,11 +58,11 @@ void Page::Write(Block &block) {
   for (size_t i = 0; i < header.recordInfoArray.size(); i++) {
     const auto &recordInfo = header.recordInfoArray.at(i);
     block.pos = recordInfo.location;
-    WriteRecord(block, records.at(i));
+    WriteRow(block, records.at(i));
   }
 }
 
-void Page::WriteRecord(Block &block, const DBRow &record) {
+void Page::WriteRow(Block &block, const DBRow &record) {
   auto WriteValue = [this, &block, &record](int i) {
     switch (columns.at(i).type) {
     case TypeTag::INTEGER: {
@@ -96,7 +96,7 @@ void Page::WriteRecord(Block &block, const DBRow &record) {
   }
 }
 
-bool Page::AddRecord(const DBRow &record) {
+bool Page::AddRow(const DBRow &record) {
   u16 size = ComputeRowSize(record, columns);
   u16 remainingSpace = header.endOfFreeSpace -
                        header.numOfEntries * 2 * sizeof(u16) + 2 * sizeof(u16);

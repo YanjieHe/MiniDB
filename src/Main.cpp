@@ -35,7 +35,7 @@ void SavePage() {
                         DBRow(vector<DBRow::Value>{DBRow::Value(string("Bar")),
                                                    DBRow::Value(i64(87))})};
   Page page(columns, records, PAGE_SIZE);
-  page.AddRecord(DBRow(vector<DBRow::Value>{DBRow::Value(string("Foo Bar")),
+  page.AddRow(DBRow(vector<DBRow::Value>{DBRow::Value(string("Foo Bar")),
                                             DBRow::Value(i64(99))}));
   Block block(PAGE_SIZE);
   page.Write(block);
