@@ -19,6 +19,9 @@ void LoadPage() {
   block.LoadFromFile(stream);
   Page page(columns, block);
   page.Write(block);
+  for (const auto &col : page.columns) {
+    cout << std::setw(4) << DBColumnToJson(col) << endl;
+  }
   for (const auto &record : page.records) {
     cout << std::setw(4) << DBRowToJson(record) << endl;
   }
