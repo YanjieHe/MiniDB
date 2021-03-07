@@ -16,4 +16,6 @@ public:
 };
 
 u16 ComputeRowSize(const DBRow &row, const vector<DBColumn> &columns);
+
+json DBColumnToJson(const DBColumn& column);
 #endif // DBCOLUMN_HPP

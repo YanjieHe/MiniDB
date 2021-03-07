@@ -1,5 +1,6 @@
 #include "DBColumn.hpp"
 #include "DBException.hpp"
+#include <magic_enum/magic_enum.hpp>
 
 using std::holds_alternative;
 
@@ -51,4 +52,10 @@ u16 ComputeRowSize(const DBRow &row, const vector<DBColumn> &columns) {
     }
   }
   return totalSize;
+}
+
+json DBColumnToJson(const DBColumn &column) {
+  return {{"name", column.name},
+          {"type", magic_enum::enum_name(column.type)},
+          {"nullable", column.nullable}};
 }
