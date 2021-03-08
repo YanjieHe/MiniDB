@@ -17,20 +17,4 @@ public:
   bool AddRow(const DBRow &row);
 };
 
-class Index {
-public:
-  typedef variant<i64, string> Key;
-  vector<Key> keys;
-  u16 blockIndex;
-  u16 index;
-};
-
-class IndexPage {
-public:
-  Header header;
-  vector<Index> indexList;
-};
-
-bool IndexKeyLessThan(const Index::Key &x, const Index::Key &y);
-
 #endif // MINIDB_PAGE_HPP
