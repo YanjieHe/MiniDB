@@ -1,11 +1,12 @@
 #ifndef BLOCK_HPP
 #define BLOCK_HPP
-#include <fstream>
-#include "DBRow.hpp"
 #include "DBColumn.hpp"
+#include "DBRow.hpp"
+#include <fstream>
 
-using std::ofstream;
+
 using std::ifstream;
+using std::ofstream;
 
 class Block {
 public:
@@ -28,5 +29,7 @@ public:
 };
 
 void WriteBlock(ofstream &stream, Block &block);
-void LoadBlock(ifstream &stream, Block &block);
+void LoadBlockAtCurrentPos(ifstream &stream, Block &block);
+void LoadHeader(Block &block, Header &header);
+void LoadBlock(ifstream& stream, u16 blockIndex, size_t pageSize, Block& block);
 #endif // BLOCK_HPP

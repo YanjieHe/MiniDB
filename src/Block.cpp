@@ -1,6 +1,6 @@
 #include "Block.hpp"
-#include <bit_converter/bit_converter.hpp>
 #include "DBException.hpp"
+#include <bit_converter/bit_converter.hpp>
 
 void WriteBlock(ofstream &stream, Block &block) {
   auto pos = stream.tellp();
@@ -9,7 +9,7 @@ void WriteBlock(ofstream &stream, Block &block) {
   stream.seekp(pos);
 }
 
-void LoadBlock(ifstream &stream, Block &block) {
+void LoadBlockAtCurrentPos(ifstream &stream, Block &block) {
   auto pos = stream.tellg();
   stream.read(reinterpret_cast<char *>(block.bytes.data()), block.bytes.size());
   stream.seekg(pos);
@@ -85,7 +85,9 @@ DBRow Block::ReadRecord(vector<DBColumn> &columns) {
       record.values.emplace_back(s);
       break;
     }
-    default: { throw DBException("BLOB type is not supported yet"); }
+    default: {
+      throw DBException("BLOB type is not supported yet");
+    }
     }
   };
   record.values.reserve(columns.size());
@@ -109,4 +111,20 @@ void Block::SaveToFile(ofstream &stream) {
 
 void Block::LoadFromFile(ifstream &stream) {
   stream.read(reinterpret_cast<char *>(bytes.data()), bytes.size());
+}
+
+void LoadHeader(Block &block, Header &header) {
+  header.numOfEntries = block.ReadU16();
+  header.endOfFreeSpace = block.ReadU16();
+  header.recordInfoArray.reserve(header.numOfEntries);
+  for (size_t i = 0; i < header.numOfEntries; i++) {
+    u16 location = block.ReadU16();
+    u16 size = block.ReadU16();
+    header.recordInfoArray.emplace_back(location, size);
+  }
+}
+void LoadBlock(ifstream &stream, u16 blockIndex, size_t pageSize,
+               Block &block) {
+  stream.seekg(pageSize * blockIndex);
+  LoadBlockAtCurrentPos(stream, block);
 }

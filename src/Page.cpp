@@ -1,21 +1,15 @@
 #include "Page.hpp"
-#include <iostream>
-#include <algorithm>
 #include <DBException.hpp>
+#include <algorithm>
+#include <iostream>
+
 
 using std::cout;
 using std::endl;
 using std::holds_alternative;
 
 Page::Page(const vector<DBColumn> &columns, Block &block) : columns{columns} {
-  header.numOfEntries = block.ReadU16();
-  header.endOfFreeSpace = block.ReadU16();
-  header.recordInfoArray.reserve(header.numOfEntries);
-  for (size_t i = 0; i < header.numOfEntries; i++) {
-    u16 location = block.ReadU16();
-    u16 size = block.ReadU16();
-    header.recordInfoArray.emplace_back(location, size);
-  }
+  LoadHeader(block, header);
   for (const auto &recordInfo : header.recordInfoArray) {
     block.pos = recordInfo.location;
     records.push_back(block.ReadRecord(this->columns));
@@ -68,7 +62,9 @@ void Page::WriteRow(Block &block, const DBRow &record) {
       block.WriteText(text);
       break;
     }
-    default: { throw "not supported yet"; }
+    default: {
+      throw "not supported yet";
+    }
     }
   };
   for (size_t i = 0; i < columns.size(); i++) {
