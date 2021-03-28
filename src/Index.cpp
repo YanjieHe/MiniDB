@@ -3,7 +3,7 @@
 
 using std::holds_alternative;
 
-IndexPage::IndexPage(const vector<DBColumn> &keyColumns, Buffer &buffer)
+NonLeafPage::NonLeafPage(const vector<DBColumn> &keyColumns, Buffer &buffer)
     : keyColumns{keyColumns} {
   LoadHeader(buffer, header);
   for (size_t i = 0; i < header.recordInfoArray.size(); i++) {
@@ -12,8 +12,30 @@ IndexPage::IndexPage(const vector<DBColumn> &keyColumns, Buffer &buffer)
     if (i % 2 == 0) {
       // page pointer
       u16 bufferID = buffer.ReadU16();
+      pagePointers.push_back(bufferID);
+    } else {
+      // primary key
+      auto record = buffer.ReadRecord(this->keyColumns);
+      indexList.push_back(RecordToIndex(this->keyColumns, record));
+    }
+  }
+}
+
+LeafPage::LeafPage(const vector<DBColumn> &keyColumns, Buffer &buffer)
+    : keyColumns{keyColumns} {
+  LoadHeader(buffer, header);
+  for (size_t i = 0; i < header.recordInfoArray.size(); i++) {
+    const auto &recordInfo = header.recordInfoArray.at(i);
+    buffer.pos = recordInfo.location;
+    if (i == 0 || (i + 1) == header.recordInfoArray.size()) {
+      // page pointer
+      u16 bufferID = buffer.ReadU16();
+      pagePointers.push_back(bufferID);
+    } else if (i % 2 == 1) {
+      // record pointer
+      u16 bufferID = buffer.ReadU16();
       u16 posIndex = buffer.ReadU16();
-      pagePointers.emplace_back(bufferID, posIndex);
+      recordPointers.emplace_back(bufferID, posIndex);
     } else {
       // primary key
       auto record = buffer.ReadRecord(this->keyColumns);

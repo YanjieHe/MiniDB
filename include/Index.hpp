@@ -5,14 +5,14 @@
 
 using std::variant;
 
-class PagePointer {
+class RecordPointer {
 public:
   u16 bufferID;
   u16 posIndex;
 
-  PagePointer() = default;
+  RecordPointer() = default;
 
-  PagePointer(u16 bufferID, u16 posIndex)
+  RecordPointer(u16 bufferID, u16 posIndex)
       : bufferID{bufferID}, posIndex{posIndex} {}
 };
 
@@ -25,15 +25,25 @@ public:
   explicit Index(vector<Key> keys) : keys{keys} {}
 };
 
-class IndexPage {
+class NonLeafPage {
 public:
   Header header;
   vector<DBColumn> keyColumns;
-  bool isLeafPage;
   vector<Index> indexList;
-  vector<PagePointer> pagePointers;
+  vector<u16> pagePointers;
 
-  IndexPage(const vector<DBColumn> &keyColumns, Buffer &buffer);
+  NonLeafPage(const vector<DBColumn> &keyColumns, Buffer &buffer);
+};
+
+class LeafPage {
+public:
+  Header header;
+  vector<DBColumn> keyColumns;
+  vector<Index> indexList;
+  vector<RecordPointer> recordPointers;
+  vector<u16> pagePointers;
+
+  LeafPage(const vector<DBColumn> &keyColumns, Buffer &buffer);
 };
 
 int CompareIndexKey(const Index::Key &x, const Index::Key &y);
