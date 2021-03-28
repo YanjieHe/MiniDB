@@ -3,32 +3,22 @@
 
 using std::holds_alternative;
 
-IndexPage::IndexPage(const vector<DBColumn> &columns, Block &block)
-    : columns{columns} {
-  LoadHeader(block, header);
-  if (columns.size() < 2) {
-    throw DBException("the number of columns for index page is incorrect");
-  }
-  size_t nKeys = columns.size() - 1;
-  for (const auto &recordInfo : header.recordInfoArray) {
-    block.pos = recordInfo.location;
-    auto record = block.ReadRecord(this->columns);
-    vector<Index::Key> keys;
-    keys.reserve(nKeys);
-    for (size_t j = 0; j < nKeys; j++) {
-      auto col = columns.at(j);
-      if (col.type == TypeTag::INTEGER) {
-        keys.push_back(std::get<i64>(record.values.at(j)));
-      } else if (col.type == TypeTag::TEXT) {
-        keys.push_back(std::get<string>(record.values.at(j)));
-      } else {
-        throw DBException("the index column type is not supported");
-      }
+IndexPage::IndexPage(const vector<DBColumn> &keyColumns, Buffer &buffer)
+    : keyColumns{keyColumns} {
+  LoadHeader(buffer, header);
+  for (size_t i = 0; i < header.recordInfoArray.size(); i++) {
+    const auto &recordInfo = header.recordInfoArray.at(i);
+    buffer.pos = recordInfo.location;
+    if (i % 2 == 0) {
+      // page pointer
+      u16 bufferID = buffer.ReadU16();
+      u16 posIndex = buffer.ReadU16();
+      pagePointers.emplace_back(bufferID, posIndex);
+    } else {
+      // primary key
+      auto record = buffer.ReadRecord(this->keyColumns);
+      indexList.push_back(RecordToIndex(this->keyColumns, record));
     }
-    i64 value = std::get<i64>(record.values.at(nKeys));
-    u16 blockIndex = static_cast<u16>(value / 65536);
-    u16 posIndex = static_cast<u16>(value / 65556);
-    indexList.emplace_back(keys, blockIndex, posIndex);
   }
 }
 
@@ -68,15 +58,17 @@ int CompareIndex(const Index &x, const Index &y) {
   }
 }
 
-void Search(ifstream &stream, size_t pageSize, const vector<DBColumn> &columns,
-            const Index &index) {
-  Block block(pageSize);
-  LoadBlockAtCurrentPos(stream, block);
-  IndexPage indexPage(columns, block);
-  if (indexPage.header.numOfEntries == 0) {
-    indexPage.indexList.push_back(index);
-    indexPage.header.numOfEntries++;
-  } else if (indexPage.header.numOfEntries == 1) {
-    // TO DO
+Index RecordToIndex(const vector<DBColumn> &keyColumns, const DBRow &record) {
+  vector<Index::Key> keys;
+  for (size_t j = 0; j < keyColumns.size(); j++) {
+    auto col = keyColumns.at(j);
+    if (col.type == TypeTag::INTEGER) {
+      keys.push_back(std::get<i64>(record.values.at(j)));
+    } else if (col.type == TypeTag::TEXT) {
+      keys.push_back(std::get<string>(record.values.at(j)));
+    } else {
+      throw DBException("the index column type is not supported");
+    }
   }
+  return Index(keys);
 }
