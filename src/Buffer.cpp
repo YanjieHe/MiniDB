@@ -92,7 +92,8 @@ DBRow Buffer::ReadRecord(vector<DBColumn> &columns) {
   return record;
 }
 
-void LoadHeader(Buffer &buffer, Header &header) {
+void LoadHeader(Buffer &buffer, PageHeader &header) {
+  header.pageType = static_cast<PageType>(buffer.ReadU8());
   header.numOfEntries = buffer.ReadU16();
   header.endOfFreeSpace = buffer.ReadU16();
   header.recordInfoArray.reserve(header.numOfEntries);
@@ -100,5 +101,14 @@ void LoadHeader(Buffer &buffer, Header &header) {
     u16 location = buffer.ReadU16();
     u16 size = buffer.ReadU16();
     header.recordInfoArray.emplace_back(location, size);
+  }
+}
+void SaveHeader(Buffer &buffer, const PageHeader &header) {
+  buffer.WriteU8(static_cast<u8>(header.pageType));
+  buffer.WriteU16(header.numOfEntries);
+  buffer.WriteU16(header.endOfFreeSpace);
+  for (const auto &recordInfo : header.recordInfoArray) {
+    buffer.WriteU16(recordInfo.location);
+    buffer.WriteU16(recordInfo.size);
   }
 }

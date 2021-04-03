@@ -31,12 +31,8 @@ Page::Page(const vector<DBColumn> columns, const vector<DBRow> &records,
 }
 
 void Page::Write(Buffer &buffer) {
-  buffer.WriteU16(header.numOfEntries);
-  buffer.WriteU16(header.endOfFreeSpace);
-  for (const auto &recordInfo : header.recordInfoArray) {
-    buffer.WriteU16(recordInfo.location);
-    buffer.WriteU16(recordInfo.size);
-  }
+  buffer.Reset();
+  SaveHeader(buffer, header);
   for (size_t i = 0; i < header.recordInfoArray.size(); i++) {
     const auto &recordInfo = header.recordInfoArray.at(i);
     buffer.pos = recordInfo.location;

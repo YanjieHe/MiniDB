@@ -19,7 +19,9 @@ public:
   void WriteF64(f64 f);
   void WriteText(const string s);
   DBRow ReadRecord(vector<DBColumn> &columns);
+  void Reset() { pos = 0; }
 };
 
-void LoadHeader(Buffer &buffer, Header &header);
+void LoadHeader(Buffer &buffer, PageHeader &header);
+void SaveHeader(Buffer& buffer, const PageHeader& header);
 #endif // BUFFER_HPP

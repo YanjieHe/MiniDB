@@ -5,10 +5,13 @@
 class BufferManager {
 public:
   string path;
-  explicit BufferManager(string path) : path{path} {}
+  DatabaseHeader header;
+  explicit BufferManager(string path);
 
-  void LoadBuffer(u16 bufferID, size_t pageSize, Buffer &buffer);
-  void SaveBuffer(u16 bufferID, size_t pageSize, Buffer &buffer);
+  void LoadBuffer(u16 bufferID, Buffer &buffer);
+  void SaveBuffer(u16 bufferID, Buffer &buffer);
+  u16 AllocatePage();
+  size_t PageStart(u16 bufferID) const;
 };
 
 #endif // BUFFER_MANAGER_HPP

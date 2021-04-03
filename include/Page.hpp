@@ -5,7 +5,7 @@
 
 class Page {
 public:
-  Header header;
+  PageHeader header;
   vector<DBColumn> columns;
   vector<DBRow> records;
 
