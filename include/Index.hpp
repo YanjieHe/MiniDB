@@ -18,7 +18,17 @@ public:
   vector<Index> indexList;
 };
 
-bool IndexKeyLessThan(const Index::Key &x, const Index::Key &y);
-bool IndexLessThan(const Index &x, const Index &y);
+template <typename T> int GetComparisonIntResult(const T &x, const T &y) {
+  if (x < y) {
+    return -1;
+  } else if (x > y) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+int CompareIndexKey(const Index::Key &x, const Index::Key &y);
+int CompareIndex(const Index &x, const Index &y);
 
 #endif // INDEX_HPP
