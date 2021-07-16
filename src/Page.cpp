@@ -1,24 +1,17 @@
 #include "Page.hpp"
-#include <iostream>
-#include <algorithm>
 #include <DBException.hpp>
+#include <algorithm>
+#include <iostream>
 
 using std::cout;
 using std::endl;
 using std::holds_alternative;
 
-Page::Page(const vector<DBColumn> &columns, Block &block) : columns{columns} {
-  header.numOfEntries = block.ReadU16();
-  header.endOfFreeSpace = block.ReadU16();
-  header.recordInfoArray.reserve(header.numOfEntries);
-  for (size_t i = 0; i < header.numOfEntries; i++) {
-    u16 location = block.ReadU16();
-    u16 size = block.ReadU16();
-    header.recordInfoArray.emplace_back(location, size);
-  }
+Page::Page(const vector<DBColumn> &columns, Buffer &buffer) : columns{columns} {
+  LoadHeader(buffer, header);
   for (const auto &recordInfo : header.recordInfoArray) {
-    block.pos = recordInfo.location;
-    records.push_back(block.ReadRecord(this->columns));
+    buffer.pos = recordInfo.location;
+    records.push_back(buffer.ReadRecord(this->columns));
   }
 }
 
@@ -37,46 +30,44 @@ Page::Page(const vector<DBColumn> columns, const vector<DBRow> &records,
   header.endOfFreeSpace = curPos;
 }
 
-void Page::Write(Block &block) {
-  block.WriteU16(header.numOfEntries);
-  block.WriteU16(header.endOfFreeSpace);
-  for (const auto &recordInfo : header.recordInfoArray) {
-    block.WriteU16(recordInfo.location);
-    block.WriteU16(recordInfo.size);
-  }
+void Page::Write(Buffer &buffer) {
+  buffer.Reset();
+  SaveHeader(buffer, header);
   for (size_t i = 0; i < header.recordInfoArray.size(); i++) {
     const auto &recordInfo = header.recordInfoArray.at(i);
-    block.pos = recordInfo.location;
-    WriteRow(block, records.at(i));
+    buffer.pos = recordInfo.location;
+    WriteRow(buffer, records.at(i));
   }
 }
 
-void Page::WriteRow(Block &block, const DBRow &record) {
-  auto WriteValue = [this, &block, &record](int i) {
+void Page::WriteRow(Buffer &buffer, const DBRow &record) {
+  auto WriteValue = [this, &buffer, &record](int i) {
     switch (columns.at(i).type) {
     case TypeTag::INTEGER: {
-      block.WriteI64(std::get<i64>(record.values.at(i)));
+      buffer.WriteI64(std::get<i64>(record.values.at(i)));
       break;
     }
     case TypeTag::REAL: {
-      block.WriteF64(std::get<f64>(record.values.at(i)));
+      buffer.WriteF64(std::get<f64>(record.values.at(i)));
       break;
     }
     case TypeTag::TEXT: {
       auto text = std::get<string>(record.values.at(i));
-      block.WriteU16(static_cast<u16>(text.size()));
-      block.WriteText(text);
+      buffer.WriteU16(static_cast<u16>(text.size()));
+      buffer.WriteText(text);
       break;
     }
-    default: { throw "not supported yet"; }
+    default: {
+      throw DBException("BLOB type is not supported yet");
+    }
     }
   };
   for (size_t i = 0; i < columns.size(); i++) {
     if (columns.at(i).nullable) {
       if (holds_alternative<monostate>(record.values.at(i))) {
-        block.WriteU8(1);
+        buffer.WriteU8(1);
       } else {
-        block.WriteU8(0);
+        buffer.WriteU8(0);
       }
       WriteValue(i);
     } else {
