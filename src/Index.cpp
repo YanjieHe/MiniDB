@@ -29,7 +29,7 @@ int CompareIndex(const Index &x, const Index &y) {
     }
     return 0;
   } else {
-    throw DBException("the two index has different number of key components.");
+    throw DBException("the two indices have different number of key components.");
   }
 }
 NonLeafPage::NonLeafPage(u16 pageID, const vector<DBColumn> &keyColumns, const PageHeader &header, Buffer &buffer)
@@ -89,62 +89,6 @@ LeafPage::LeafPage(u16 pageID, const vector<DBColumn> &keyColumns, vector<Index>
 {
 }
 
-int CompareIndexKey(const Index::Key &x, const Index::Key &y)
-{
-    if (holds_alternative<i64>(x) && holds_alternative<i64>(y))
-    {
-        if (std::get<i64>(x) < std::get<i64>(y))
-        {
-            return -1;
-        }
-        else if (std::get<i64>(x) > std::get<i64>(y))
-        {
-            return 1;
-        }
-        else
-        {
-            return 0;
-        }
-    }
-    else if (holds_alternative<string>(x) && holds_alternative<string>(y))
-    {
-        if (std::get<string>(x) < std::get<string>(y))
-        {
-            return -1;
-        }
-        else if (std::get<string>(x) > std::get<string>(y))
-        {
-            return 1;
-        }
-        else
-        {
-            return 0;
-        }
-    }
-    else
-    {
-        throw DBException("the two index keys for comparision have two different types");
-    }
-}
-
-int CompareIndex(const Index &x, const Index &y)
-{
-    if (x.keys.size() == y.keys.size())
-    {
-        for (size_t i = 0; i < x.keys.size(); i++)
-        {
-            if (int result = CompareIndexKey(x.keys[i], y.keys[i]); result != 0)
-            {
-                return result;
-            }
-        }
-        return 0;
-    }
-    else
-    {
-        throw DBException("two indices have different number of keys");
-    }
-}
 
 Index RecordToIndex(const vector<DBColumn> &keyColumns, const DBRow &record)
 {
@@ -171,7 +115,7 @@ Index RecordToIndex(const vector<DBColumn> &keyColumns, const DBRow &record)
 namespace bplustree
 {
 
-bool Search(BufferManager &bufferManager, size_t pageSize, Buffer &buffer, shared_ptr<IndexPage> root,
+bool Search(BufferManager &bufferManager, Buffer &buffer, shared_ptr<IndexPage> root,
             const Index &index)
 {
     if (root)
@@ -242,7 +186,7 @@ shared_ptr<IndexPage> Insert(BufferManager &bufferManager, Buffer &buffer, size_
         while (cursor->IsLeaf() == false)
         {
             parent = cursor;
-            for (int i = 0; i < cursor->IndexList().size(); i++)
+            for (size_t i = 0; i < cursor->IndexList().size(); i++)
             {
                 if (CompareIndex(index, cursor->IndexList().at(i)) < 0)
                 {
@@ -283,6 +227,7 @@ shared_ptr<IndexPage> Insert(BufferManager &bufferManager, Buffer &buffer, size_
         root = make_shared<LeafPage>(pageID, keyColumns, vector<Index>{index}, vector<RecordPointer>{recordPointer},
                                      vector<u16>{});
     }
+    return shared_ptr<LeafPage>();
 }
 void InsertInternal(size_t order, const Index &index, IndexPage *cursor, IndexPage *child)
 {
@@ -308,30 +253,30 @@ void InsertInternal(size_t order, const Index &index, IndexPage *cursor, IndexPa
     {
         vector<Index> virtualKeys(order + 1);
         vector<u16> virtualPtrs(order + 2);
-        for (int k = 0; k < order; k++)
+        for (size_t k = 0; k < order; k++)
         {
             virtualKeys.at(k) = cursor->IndexList().at(k);
         }
-        for (int k = 0; k < order + 1; k++)
+        for (size_t k = 0; k < order + 1; k++)
         {
             virtualPtrs.at(k) = cursor->PagePointers().at(k);
         }
-        int i = 0;
+        size_t i = 0;
         while (CompareIndex(index, virtualKeys.at(i)) > 0 && i < order)
         {
             i++;
         }
-        for (int k = order; k > i; k--)
+        for (size_t k = order; k > i; k--)
         {
             virtualKeys.at(k) = virtualKeys.at(k - 1);
         }
         virtualKeys.at(i) = index;
-        for (int k = order + 1; k > i + 1; k--)
+        for (size_t k = order + 1; k > i + 1; k--)
         {
             virtualPtrs.at(k) = virtualPtrs.at(k - 1);
         }
         virtualPtrs.at(i + 1) = child->PageID();
-        NonLeafPage *newPage;
+        // NonLeafPage *newPage;
         // TO DO
     }
 }

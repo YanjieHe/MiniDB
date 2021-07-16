@@ -32,6 +32,7 @@ u16 BufferManager::AllocatePage()
     ofstream stream(path, std::ios::binary);
     stream.seekp(header.pageSize, std::ios::end);
     stream.write("", 0);
+    return header.pageSize;
 }
 
 size_t BufferManager::PageStart(u16 bufferID) const

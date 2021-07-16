@@ -16,7 +16,7 @@ void LoadPage() {
   vector<DBColumn> columns{DBColumn(false, TypeTag::TEXT, "name"),
                            DBColumn(false, TypeTag::INTEGER, "age")};
   Buffer buffer(PAGE_SIZE);
-  BufferManager bufferManager("data.bin", PAGE_SIZE);
+  BufferManager bufferManager("data.bin");
   bufferManager.LoadBuffer(0, buffer);
   Page page(columns, buffer);
   page.Write(buffer);
@@ -40,7 +40,7 @@ void SavePage() {
                                          DBRow::Value(i64(99))}));
   Buffer buffer(PAGE_SIZE);
   page.Write(buffer);
-  BufferManager bufferManager("data.bin", PAGE_SIZE);
+  BufferManager bufferManager("data.bin");
   bufferManager.SaveBuffer(0, buffer);
 }
 

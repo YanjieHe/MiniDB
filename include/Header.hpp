@@ -1,6 +1,7 @@
 #ifndef HEADER_HPP
 #include <cstdint>
 #include <vector>
+#include <cmath>
 
 using i32 = int32_t;
 using i64 = int64_t;
