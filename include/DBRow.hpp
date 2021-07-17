@@ -1,7 +1,6 @@
 #ifndef DBROW_HPP
 #define DBROW_HPP
 #include "Header.hpp"
-#include <cmath>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <variant>

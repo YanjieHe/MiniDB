@@ -5,6 +5,7 @@ using std::holds_alternative;
 using std::make_shared;
 using std::static_pointer_cast;
 
+<<<<<<< Updated upstream
 int CompareIndexKey(const Index::Key &x, const Index::Key &y) {
   if (holds_alternative<i64>(x) && holds_alternative<i64>(y)) {
     return GetComparisonIntResult(std::get<i64>(x), std::get<i64>(y));
@@ -34,7 +35,15 @@ int CompareIndex(const Index &x, const Index &y) {
 }
 NonLeafPage::NonLeafPage(u16 pageID, const vector<DBColumn> &keyColumns, const PageHeader &header, Buffer &buffer)
     : pageID{pageID}, header{header}, keyColumns{keyColumns}
+=======
+NonLeafPage::NonLeafPage(u16 pageID, const vector<DBColumn> &keyColumns, const PageHeader &header, Buffer &buffer,
+                         size_t order)
+    : pageID{pageID}, header{header}, keyColumns{keyColumns}, indexList(order),
+      pagePointers(order), order{order}, size{0}
+>>>>>>> Stashed changes
 {
+    size_t pagePointersPos = 0;
+    size_t indexListPos = 0;
     for (size_t i = 0; i < header.recordInfoArray.size(); i++)
     {
         const auto &recordInfo = header.recordInfoArray.at(i);
@@ -43,20 +52,34 @@ NonLeafPage::NonLeafPage(u16 pageID, const vector<DBColumn> &keyColumns, const P
         {
             // page pointer
             u16 bufferID = buffer.ReadU16();
-            pagePointers.push_back(bufferID);
+            pagePointers.at(pagePointersPos) = bufferID;
+            pagePointersPos++;
         }
         else
         {
             // primary key
             auto record = buffer.ReadRecord(this->keyColumns);
-            indexList.push_back(RecordToIndex(this->keyColumns, record));
+            indexList.at(indexListPos) = RecordToIndex(this->keyColumns, record);
+            indexListPos++;
+            size++;
         }
     }
 }
 
-LeafPage::LeafPage(u16 pageID, const vector<DBColumn> &keyColumns, const PageHeader &header, Buffer &buffer)
-    : pageID{pageID}, header{header}, keyColumns{keyColumns}
+NonLeafPage::NonLeafPage(u16 pageID, const vector<DBColumn> &keyColumns, vector<Index> indexList,
+                         vector<u16> pagePointers, size_t order, size_t size)
+    : pageID{pageID}, keyColumns{keyColumns}, indexList{indexList}, pagePointers{pagePointers}, order{order}, size{size}
 {
+    // TO DO: header
+}
+LeafPage::LeafPage(u16 pageID, const vector<DBColumn> &keyColumns, const PageHeader &header, Buffer &buffer,
+                   size_t order)
+    : pageID{pageID}, header{header}, keyColumns{keyColumns}, indexList(order), recordPointers(order),
+      pagePointers(order), order{order}, size{0}
+{
+    size_t pagePointersPos = 0;
+    size_t recordPointersPos = 0;
+    size_t indexListPos = 0;
     for (size_t i = 0; i < header.recordInfoArray.size(); i++)
     {
         const auto &recordInfo = header.recordInfoArray.at(i);
@@ -65,28 +88,34 @@ LeafPage::LeafPage(u16 pageID, const vector<DBColumn> &keyColumns, const PageHea
         {
             // page pointer
             u16 bufferID = buffer.ReadU16();
-            pagePointers.push_back(bufferID);
+            pagePointers.at(pagePointersPos) = bufferID;
+            pagePointersPos++;
         }
         else if (i % 2 == 1)
         {
             // record pointer
             u16 bufferID = buffer.ReadU16();
             u16 posIndex = buffer.ReadU16();
-            recordPointers.emplace_back(bufferID, posIndex);
+            recordPointers.at(recordPointersPos) = RecordPointer(bufferID, posIndex);
+            recordPointersPos++;
         }
         else
         {
             // primary key
             auto record = buffer.ReadRecord(this->keyColumns);
-            indexList.push_back(RecordToIndex(this->keyColumns, record));
+            indexList.at(indexListPos) = RecordToIndex(this->keyColumns, record);
+            indexListPos++;
+            size++;
         }
     }
 }
+
 LeafPage::LeafPage(u16 pageID, const vector<DBColumn> &keyColumns, vector<Index> indexList,
-                   vector<RecordPointer> recordPointers, vector<u16> pagePointers)
-    : pageID{pageID}, keyColumns{keyColumns}, indexList{indexList}, recordPointers{recordPointers}, pagePointers{
-                                                                                                        pagePointers}
+                   vector<RecordPointer> recordPointers, vector<u16> pagePointers, size_t order, size_t size)
+    : pageID{pageID}, keyColumns{keyColumns}, indexList{indexList}, recordPointers{recordPointers},
+      pagePointers{pagePointers}, order{order}, size{size}
 {
+    // TO DO: header
 }
 
 
@@ -123,7 +152,7 @@ bool Search(BufferManager &bufferManager, Buffer &buffer, shared_ptr<IndexPage> 
         shared_ptr<IndexPage> cursor = root;
         while (cursor->IsLeaf() == false)
         {
-            for (size_t i = 0; i < cursor->IndexList().size(); i++)
+            for (size_t i = 0; i < cursor->Size(); i++)
             {
                 if (CompareIndex(index, cursor->IndexList().at(i)) < 0)
                 {
@@ -131,7 +160,7 @@ bool Search(BufferManager &bufferManager, Buffer &buffer, shared_ptr<IndexPage> 
                     cursor = LoadIndexPage(bufferManager, buffer, pagePointer, cursor->KeyColumns());
                     break;
                 }
-                if (i + 1 == cursor->IndexList().size())
+                if (i + 1 == cursor->Size())
                 {
                     u16 pagePointer = cursor->PagePointers().at(i + 1);
                     cursor = LoadIndexPage(bufferManager, buffer, pagePointer, cursor->KeyColumns());
@@ -140,7 +169,7 @@ bool Search(BufferManager &bufferManager, Buffer &buffer, shared_ptr<IndexPage> 
             }
         }
 
-        for (size_t i = 0; i < cursor->IndexList().size(); i++)
+        for (size_t i = 0; i < cursor->Size(); i++)
         {
             if (CompareIndex(cursor->IndexList().at(i), index))
             {
@@ -186,8 +215,13 @@ shared_ptr<IndexPage> Insert(BufferManager &bufferManager, Buffer &buffer, size_
         while (cursor->IsLeaf() == false)
         {
             parent = cursor;
+<<<<<<< Updated upstream
             for (size_t i = 0; i < cursor->IndexList().size(); i++)
+=======
+            for (size_t i = 0; i < cursor->Size(); i++)
+>>>>>>> Stashed changes
             {
+                // find the position to insert the node
                 if (CompareIndex(index, cursor->IndexList().at(i)) < 0)
                 {
                     u16 pagePointer = cursor->PagePointers().at(i);
@@ -195,7 +229,8 @@ shared_ptr<IndexPage> Insert(BufferManager &bufferManager, Buffer &buffer, size_
                     break;
                 }
 
-                if (i + 1 == cursor->IndexList().size())
+                // if the searching reaches the end
+                if (i + 1 == cursor->Size())
                 {
                     u16 pagePointer = cursor->PagePointers().at(i + 1);
                     cursor = LoadIndexPage(bufferManager, buffer, pagePointer, cursor->KeyColumns());
@@ -204,21 +239,74 @@ shared_ptr<IndexPage> Insert(BufferManager &bufferManager, Buffer &buffer, size_
             }
         }
 
-        if (cursor->IndexList().size() < order)
+        if (cursor->Size() < order)
         {
             size_t i = 0;
-            while (CompareIndex(index, cursor->IndexList().at(i)) > 0 && i < cursor->IndexList().size())
+            // move to the position to insert the node
+            while (CompareIndex(index, cursor->IndexList().at(i)) > 0 && i < cursor->Size())
             {
                 i++;
             }
-            cursor->IndexList().insert(cursor->IndexList().begin() + i, index);
-            vector<RecordPointer> &recordPointers = static_pointer_cast<LeafPage>(cursor)->recordPointers;
-            recordPointers.insert(recordPointers.begin() + i, recordPointer);
-            // TO DO
+            auto &recordPointers = static_pointer_cast<LeafPage>(cursor)->recordPointers;
+            for (size_t j = cursor->Size(); j != i; j--)
+            {
+                cursor->IndexList().at(j) = cursor->IndexList().at(j - 1);
+                recordPointers.at(j) = recordPointers.at(j - 1);
+            }
+            cursor->IndexList().at(i) = index;
+            recordPointers.at(i) = recordPointer;
+            cursor->Resize(cursor->Size() + 1);
+            size_t n = cursor->Size();
+            cursor->PagePointers().at(n) = cursor->PagePointers().at(n - 1);
+            cursor->PagePointers().at(n - 1) = 0;
         }
         else
         {
-            // TO DO
+            u16 pageID = bufferManager.AllocatePage();
+            auto newLeaf = make_shared<LeafPage>(pageID, keyColumns, vector<Index>(order), vector<RecordPointer>(order),
+                                                 vector<u16>(order), order, 1);
+            newLeaf->IndexList().at(0) = index;
+            newLeaf->recordPointers.at(0) = recordPointer;
+            vector<Index> virtualNode = cursor->IndexList();
+            size_t i = 0;
+            while (CompareIndex(index, virtualNode.at(i)) && i < order)
+            {
+                i++;
+            }
+
+            for (size_t j = order; j != i; j--)
+            {
+                virtualNode.at(j) = virtualNode.at(j - 1);
+            }
+            virtualNode.at(i) = index;
+            cursor->Resize((order + 1) / 2);
+            newLeaf->Resize(order + 1 - (order + 1) / 2);
+            cursor->PagePointers().at(cursor->Size()) = pageID;
+            newLeaf->PagePointers().at(newLeaf->Size()) = cursor->PagePointers().at(order);
+            cursor->PagePointers().at(order) = 0;
+            for (size_t i = 0; i < cursor->Size(); i++)
+            {
+                cursor->IndexList().at(i) = virtualNode.at(i);
+            }
+            for (size_t i = 0, j = cursor->Size(); i < newLeaf->Size(); i++, j++)
+            {
+                newLeaf->IndexList().at(i) = virtualNode.at(j);
+            }
+
+            if (cursor->PageID() == root->PageID())
+            {
+                u16 pageID = bufferManager.AllocatePage();
+                auto newRoot = make_shared<NonLeafPage>(pageID, keyColumns, vector<Index>(order),
+                                                        vector<RecordPointer>(order), vector<u16>(order), order, 1);
+                newRoot->IndexList().at(0) = newLeaf->IndexList().at(0);
+                newRoot->PagePointers().at(0) = cursor->PageID();
+                newRoot->PagePointers().at(1) = newLeaf->PageID();
+                root = newRoot;
+            }
+            else
+            {
+                // TO DO
+            }
         }
     }
     else
@@ -229,24 +317,27 @@ shared_ptr<IndexPage> Insert(BufferManager &bufferManager, Buffer &buffer, size_
     }
     return shared_ptr<LeafPage>();
 }
-void InsertInternal(size_t order, const Index &index, IndexPage *cursor, IndexPage *child)
+
+void InsertInternal(BufferManager &bufferManager, size_t order, const Index &index, shared_ptr<IndexPage> cursor,
+                    shared_ptr<IndexPage> child)
 {
-    if (cursor->IndexList().size() < order)
+    if (cursor->Size() < order)
     {
         size_t i = 0;
-        while (CompareIndex(index, cursor->IndexList().at(i)) > 0 && i < cursor->IndexList().size())
+        while (CompareIndex(index, cursor->IndexList().at(i)) > 0 && i < cursor->Size())
         {
             i++;
         }
-        for (size_t j = cursor->IndexList().size(); j > i; j--)
+        for (size_t j = cursor->Size(); j > i; j--)
         {
             cursor->IndexList().at(j) = cursor->IndexList().at(j - 1);
         }
-        for (size_t j = cursor->IndexList().size() + 1; j > i + 1; j--)
+        for (size_t j = cursor->Size() + 1; j > i + 1; j--)
         {
             cursor->PagePointers().at(j) = cursor->PagePointers().at(j - 1);
         }
         cursor->IndexList().at(i) = index;
+        cursor->Resize(cursor->Size() + 1);
         cursor->PagePointers().at(i + 1) = child->PageID();
     }
     else
@@ -266,17 +357,33 @@ void InsertInternal(size_t order, const Index &index, IndexPage *cursor, IndexPa
         {
             i++;
         }
+<<<<<<< Updated upstream
         for (size_t k = order; k > i; k--)
+=======
+        for (size_t k = order; k != i; k--)
+>>>>>>> Stashed changes
         {
             virtualKeys.at(k) = virtualKeys.at(k - 1);
         }
         virtualKeys.at(i) = index;
+<<<<<<< Updated upstream
         for (size_t k = order + 1; k > i + 1; k--)
+=======
+        for (size_t k = order + 1; k != i + 1; k--)
+>>>>>>> Stashed changes
         {
             virtualPtrs.at(k) = virtualPtrs.at(k - 1);
         }
         virtualPtrs.at(i + 1) = child->PageID();
+<<<<<<< Updated upstream
         // NonLeafPage *newPage;
+=======
+        u16 pageID = bufferManager.AllocatePage();
+        auto newInternal = make_shared<NonLeafPage>(pageID, keyColumns, vector<Index>(order),
+                                                    vector<RecordPointer>(order), vector<u16>(order), order, 1);
+        cursor->Resize((order + 1) / 2);
+        newInternal->Resize(order - (order + 1) / 2);
+>>>>>>> Stashed changes
         // TO DO
     }
 }
