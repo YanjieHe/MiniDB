@@ -45,6 +45,7 @@ void Buffer::WriteF64(f64 f) {
   bit_converter::f64_to_bytes(f, true, bytes.begin() + pos);
   pos = pos + sizeof(f64);
 }
+
 void Buffer::WriteText(const string s) {
   std::transform(s.begin(), s.end(), bytes.begin() + pos,
                  [](char c) { return static_cast<u8>(c); });
@@ -53,43 +54,42 @@ void Buffer::WriteText(const string s) {
 
 DBRow Buffer::ReadRecord(vector<DBColumn> &columns) {
   DBRow record;
-  auto ReadValue = [this, &record](const DBColumn &col) {
-    switch (col.type) {
-    case TypeTag::INTEGER: {
-      i64 i = ReadI64();
-      record.values.emplace_back(i);
-      break;
-    }
-    case TypeTag::REAL: {
-      f64 f = ReadF64();
-      record.values.emplace_back(f);
-      break;
-    }
-    case TypeTag::TEXT: {
-      u16 size = ReadU16();
-      string s(bytes.begin() + pos, bytes.begin() + pos + size);
-      pos = pos + size;
-      record.values.emplace_back(s);
-      break;
-    }
-    default: {
-      throw DBException("BLOB type is not supported yet");
-    }
-    }
-  };
   record.values.reserve(columns.size());
   for (const auto &col : columns) {
     if (col.nullable) {
       if (ReadU8()) {
         record.values.emplace_back(monostate());
       } else {
-        ReadValue(col);
+        ReadRecordFieldValue(record, col);
       }
     } else {
-      ReadValue(col);
+      ReadRecordFieldValue(record, col);
     }
   }
   return record;
+}
+
+void Buffer::ReadRecordFieldValue(DBRow record, const DBColumn &col) {
+  switch (col.type) {
+  case TypeTag::INTEGER: {
+    i64 i = ReadI64();
+    record.values.emplace_back(i);
+    break;
+  }
+  case TypeTag::REAL: {
+    f64 f = ReadF64();
+    record.values.emplace_back(f);
+    break;
+  }
+  case TypeTag::TEXT: {
+    u16 size = ReadU16();
+    string s(bytes.begin() + pos, bytes.begin() + pos + size);
+    pos = pos + size;
+    record.values.emplace_back(s);
+    break;
+  }
+  default: { throw DBException("BLOB type is not supported yet"); }
+  }
 }
 
 void LoadHeader(Buffer &buffer, PageHeader &header) {
@@ -103,6 +103,7 @@ void LoadHeader(Buffer &buffer, PageHeader &header) {
     header.recordInfoArray.emplace_back(location, size);
   }
 }
+
 void SaveHeader(Buffer &buffer, const PageHeader &header) {
   buffer.WriteU8(static_cast<u8>(header.pageType));
   buffer.WriteU16(header.numOfEntries);
