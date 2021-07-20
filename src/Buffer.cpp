@@ -66,10 +66,11 @@ DBRow Buffer::ReadRecord(vector<DBColumn> &columns) {
       ReadRecordFieldValue(record, col);
     }
   }
+  record.loaded = true;
   return record;
 }
 
-void Buffer::ReadRecordFieldValue(DBRow record, const DBColumn &col) {
+void Buffer::ReadRecordFieldValue(DBRow& record, const DBColumn &col) {
   switch (col.type) {
   case TypeTag::INTEGER: {
     i64 i = ReadI64();

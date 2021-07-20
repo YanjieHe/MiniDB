@@ -7,12 +7,9 @@ using std::cout;
 using std::endl;
 using std::holds_alternative;
 
-Page::Page(const vector<DBColumn> &columns, Buffer &buffer) : columns{columns} {
+Page::Page(const vector<DBColumn> &columns, Buffer &buffer)
+    : columns{columns}, records() {
   LoadHeader(buffer, header);
-  for (const auto &recordInfo : header.recordInfoArray) {
-    buffer.pos = recordInfo.location;
-    records.push_back(buffer.ReadRecord(this->columns));
-  }
 }
 
 Page::Page(const vector<DBColumn> columns, const vector<DBRow> &records,
@@ -57,9 +54,7 @@ void Page::WriteRow(Buffer &buffer, const DBRow &record) {
       buffer.WriteText(text);
       break;
     }
-    default: {
-      throw DBException("BLOB type is not supported yet");
-    }
+    default: { throw DBException("BLOB type is not supported yet"); }
     }
   };
   for (size_t i = 0; i < columns.size(); i++) {
@@ -90,4 +85,29 @@ bool Page::AddRow(const DBRow &record) {
   } else {
     return false;
   }
+}
+const DBRow &Page::GetRow(Buffer &buffer, u16 index) {
+  if (records.size() > index) {
+    if (records.at(index).loaded == true) {
+      return records.at(index);
+    } else {
+      return GetRowInternal(buffer, index);
+    }
+  } else {
+    ExtendRecords(index);
+    return GetRowInternal(buffer, index);
+  }
+}
+void Page::ExtendRecords(u16 index) {
+  while (records.size() <= index) {
+    records.emplace_back();
+  }
+}
+const DBRow &Page::GetRowInternal(Buffer &buffer, u16 index) {
+  const auto &info = header.recordInfoArray.at(index);
+  size_t curPos = buffer.pos;
+  buffer.pos = info.location;
+  records.at(index) = buffer.ReadRecord(columns);
+  buffer.pos = curPos;
+  return records.at(index);
 }

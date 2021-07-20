@@ -18,10 +18,11 @@ class DBRow {
 public:
   typedef variant<monostate, i64, f64, string, Blob> Value;
 
+  bool loaded;
   vector<Value> values;
 
-  DBRow() = default;
-  explicit DBRow(const vector<Value> &values) : values{values} {}
+  DBRow() : loaded{false} {}
+  explicit DBRow(const vector<Value> &values) : loaded{true}, values{values} {}
 };
 
 json DBRowToJson(const DBRow &record);

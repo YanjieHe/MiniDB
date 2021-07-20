@@ -19,11 +19,11 @@ void LoadPage() {
   BufferManager bufferManager("data.bin");
   bufferManager.LoadBuffer(0, buffer);
   Page page(columns, buffer);
-  page.Write(buffer);
   for (const auto &col : page.columns) {
     cout << std::setw(4) << DBColumnToJson(col) << endl;
   }
-  for (const auto &record : page.records) {
+  for (size_t i = 0; i < page.NumOfRows(); i++) {
+    const auto &record = page.GetRow(buffer, i);
     cout << std::setw(4) << DBRowToJson(record) << endl;
   }
 }
