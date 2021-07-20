@@ -32,6 +32,7 @@ int CompareIndex(const Index &x, const Index &y) {
     throw DBException("the two indices have different number of key components.");
   }
 }
+
 NonLeafPage::NonLeafPage(u16 pageID, const vector<DBColumn> &keyColumns, const PageHeader &header, Buffer &buffer)
     : pageID{pageID}, header{header}, keyColumns{keyColumns}
 {
