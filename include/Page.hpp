@@ -1,6 +1,5 @@
 #ifndef MINIDB_PAGE_HPP
 #define MINIDB_PAGE_HPP
-#include "DBRow.hpp"
 #include "Buffer.hpp"
 
 class Page {
@@ -15,6 +14,12 @@ public:
   void Write(Buffer &buffer);
   void WriteRow(Buffer &buffer, const DBRow &row);
   bool AddRow(const DBRow &row);
+  const DBRow &GetRow(Buffer &buffer, u16 index);
+  void ExtendRecords(u16 index);
+  size_t NumOfRows() const { return header.numOfEntries; }
+
+private:
+  const DBRow &GetRowInternal(Buffer &buffer, u16 index);
 };
 
 #endif // MINIDB_PAGE_HPP

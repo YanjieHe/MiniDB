@@ -16,14 +16,14 @@ void LoadPage() {
   vector<DBColumn> columns{DBColumn(false, TypeTag::TEXT, "name"),
                            DBColumn(false, TypeTag::INTEGER, "age")};
   Buffer buffer(PAGE_SIZE);
-  BufferManager bufferManager("data.bin");
+  BufferManager bufferManager("output/data.bin");
   bufferManager.LoadBuffer(0, buffer);
   Page page(columns, buffer);
-  page.Write(buffer);
   for (const auto &col : page.columns) {
     cout << std::setw(4) << DBColumnToJson(col) << endl;
   }
-  for (const auto &record : page.records) {
+  for (size_t i = 0; i < page.NumOfRows(); i++) {
+    const auto &record = page.GetRow(buffer, i);
     cout << std::setw(4) << DBRowToJson(record) << endl;
   }
 }
@@ -40,7 +40,7 @@ void SavePage() {
                                          DBRow::Value(i64(99))}));
   Buffer buffer(PAGE_SIZE);
   page.Write(buffer);
-  BufferManager bufferManager("data.bin");
+  BufferManager bufferManager("output/data.bin");
   bufferManager.SaveBuffer(0, buffer);
 }
 
