@@ -86,7 +86,17 @@ bool Page::AddRow(const DBRow &record) {
     return false;
   }
 }
+
 const DBRow &Page::GetRow(Buffer &buffer, u16 index) {
+  auto GetRowInternal = [this](Buffer &buffer, u16 index) -> const DBRow & {
+    const auto &info = header.recordInfoArray.at(index);
+    size_t curPos = buffer.pos;
+    buffer.pos = info.location;
+    records.at(index) = buffer.ReadRecord(columns);
+    buffer.pos = curPos;
+    return records.at(index);
+  };
+
   if (records.size() > index) {
     if (records.at(index).loaded == true) {
       return records.at(index);
@@ -98,16 +108,9 @@ const DBRow &Page::GetRow(Buffer &buffer, u16 index) {
     return GetRowInternal(buffer, index);
   }
 }
+
 void Page::ExtendRecords(u16 index) {
   while (records.size() <= index) {
     records.emplace_back();
   }
-}
-const DBRow &Page::GetRowInternal(Buffer &buffer, u16 index) {
-  const auto &info = header.recordInfoArray.at(index);
-  size_t curPos = buffer.pos;
-  buffer.pos = info.location;
-  records.at(index) = buffer.ReadRecord(columns);
-  buffer.pos = curPos;
-  return records.at(index);
 }
