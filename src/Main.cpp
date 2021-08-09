@@ -18,7 +18,7 @@ void LoadPage() {
   Buffer buffer(PAGE_SIZE);
   BufferManager bufferManager("output/data.bin");
   bufferManager.LoadBuffer(0, buffer);
-  Page page(columns, buffer);
+  Page page(columns, buffer, PAGE_SIZE);
   for (const auto &col : page.columns) {
     cout << std::setw(4) << DBColumnToJson(col) << endl;
   }

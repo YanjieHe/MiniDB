@@ -7,14 +7,14 @@ using std::cout;
 using std::endl;
 using std::holds_alternative;
 
-Page::Page(const vector<DBColumn> &columns, Buffer &buffer)
-    : columns{columns}, records() {
+Page::Page(const vector<DBColumn> &columns, Buffer &buffer, size_t pageSize)
+    : columns{columns}, records(), pageSize{pageSize} {
   LoadHeader(buffer, header);
 }
 
-Page::Page(const vector<DBColumn> columns, const vector<DBRow> &records,
+Page::Page(const vector<DBColumn> &columns, const vector<DBRow> &records,
            size_t pageSize)
-    : columns{columns}, records{records} {
+    : columns{columns}, records{records}, pageSize{pageSize} {
   header.numOfEntries = records.size();
   header.recordInfoArray.reserve(header.numOfEntries);
   size_t curPos = pageSize;

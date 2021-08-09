@@ -8,31 +8,37 @@
 
 using std::variant;
 
-class RecordPointer {
+class DataPointer {
 public:
   u16 bufferID;
   u16 posIndex;
 
-  RecordPointer() = default;
+  DataPointer() = default;
 
-  RecordPointer(u16 bufferID, u16 posIndex)
+  DataPointer(u16 bufferID, u16 posIndex)
       : bufferID{bufferID}, posIndex{posIndex} {}
 };
 
-class Index {
+class DBIndex {
 public:
   typedef variant<i64, string> Key;
 
   vector<Key> keys;
 
-  Index() = default;
-  explicit Index(vector<Key> keys) : keys{keys} {}
+  DBIndex() = default;
+  explicit DBIndex(vector<Key> keys) : keys{keys} {}
+};
+
+class BPlusNode {
+public:
+  DataPointer pointer;
+  DBIndex key;
 };
 
 template <typename T> int GetComparisonIntResult(const T &x, const T &y);
 
-int CompareIndexKey(const Index::Key &x, const Index::Key &y);
-int CompareIndex(const Index &x, const Index &y);
+int CompareIndexKey(const DBIndex::Key &x, const DBIndex::Key &y);
+int CompareIndex(const DBIndex &x, const DBIndex &y);
 
 template <typename T> int GetComparisonIntResult(const T &x, const T &y) {
   if (x < y) {
