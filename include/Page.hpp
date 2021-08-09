@@ -14,8 +14,7 @@ public:
   void Write(Buffer &buffer);
   void WriteRow(Buffer &buffer, const DBRow &row);
   bool AddRow(const DBRow &row);
-  const DBRow &GetRow(Buffer &buffer, u16 index);
-  void ExtendRecords(u16 index);
+  DBRow GetRow(Buffer &buffer, u16 index);
   size_t NumOfRows() const { return header.numOfEntries; }
 };
 

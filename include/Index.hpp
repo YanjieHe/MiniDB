@@ -43,4 +43,5 @@ template <typename T> int GetComparisonIntResult(const T &x, const T &y) {
     return 0;
   }
 }
+
 #endif // INDEX_HPP
