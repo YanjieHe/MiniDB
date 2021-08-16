@@ -3,7 +3,7 @@
 
 using std::holds_alternative;
 
-int CompareIndexKey(const Index::Key &x, const Index::Key &y) {
+int CompareIndexKey(const DBIndex::Key &x, const DBIndex::Key &y) {
   if (holds_alternative<i64>(x) && holds_alternative<i64>(y)) {
     return GetComparisonIntResult(std::get<i64>(x), std::get<i64>(y));
   } else if (holds_alternative<string>(x) && holds_alternative<string>(y)) {
@@ -14,7 +14,7 @@ int CompareIndexKey(const Index::Key &x, const Index::Key &y) {
   }
 }
 
-int CompareIndex(const Index &x, const Index &y) {
+int CompareIndex(const DBIndex &x, const DBIndex &y) {
   if (x.keys.size() == y.keys.size()) {
     for (size_t i = 0; i < x.keys.size(); i++) {
       int result = CompareIndexKey(x.keys[i], y.keys[i]);

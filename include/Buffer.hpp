@@ -2,6 +2,7 @@
 #define BUFFER_HPP
 #include "DBColumn.hpp"
 #include "DBRow.hpp"
+#include <functional>
 
 class Buffer {
 public:
@@ -18,12 +19,14 @@ public:
   void WriteI64(i64 i);
   void WriteF64(f64 f);
   void WriteText(const string s);
-  DBRow ReadRecord(vector<DBColumn> &columns);
-  void ReadRecordFieldValue(DBRow& record, const DBColumn &col);
+  DBRow ReadRecord(const vector<DBColumn> &columns);
+  void ReadRecordFieldValue(DBRow &record, const DBColumn &col);
+  void WriteRecord(const vector<DBColumn> &columns, const DBRow &record);
   void Reset() { pos = 0; }
 };
 
 void LoadHeader(Buffer &buffer, PageHeader &header);
 void SaveHeader(Buffer &buffer, const PageHeader &header);
+void PreserveBufferPos(Buffer &buffer, std::function<void()> action);
 
 #endif // BUFFER_HPP

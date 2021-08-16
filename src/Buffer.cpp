@@ -2,6 +2,8 @@
 #include "DBException.hpp"
 #include <bit_converter/bit_converter.hpp>
 
+using std::holds_alternative;
+
 u8 Buffer::ReadU8() {
   u8 u = bytes.at(pos);
   pos++;
@@ -52,7 +54,7 @@ void Buffer::WriteText(const string s) {
   pos = pos + s.size();
 }
 
-DBRow Buffer::ReadRecord(vector<DBColumn> &columns) {
+DBRow Buffer::ReadRecord(const vector<DBColumn> &columns) {
   DBRow record;
   record.values.reserve(columns.size());
   for (const auto &col : columns) {
@@ -66,11 +68,10 @@ DBRow Buffer::ReadRecord(vector<DBColumn> &columns) {
       ReadRecordFieldValue(record, col);
     }
   }
-  record.loaded = true;
   return record;
 }
 
-void Buffer::ReadRecordFieldValue(DBRow& record, const DBColumn &col) {
+void Buffer::ReadRecordFieldValue(DBRow &record, const DBColumn &col) {
   switch (col.type) {
   case TypeTag::INTEGER: {
     i64 i = ReadI64();
@@ -90,6 +91,40 @@ void Buffer::ReadRecordFieldValue(DBRow& record, const DBColumn &col) {
     break;
   }
   default: { throw DBException("BLOB type is not supported yet"); }
+  }
+}
+
+void Buffer::WriteRecord(const vector<DBColumn> &columns, const DBRow &record) {
+  auto WriteValue = [this, &columns, &record](int i) {
+    switch (columns.at(i).type) {
+    case TypeTag::INTEGER: {
+      WriteI64(std::get<i64>(record.values.at(i)));
+      break;
+    }
+    case TypeTag::REAL: {
+      WriteF64(std::get<f64>(record.values.at(i)));
+      break;
+    }
+    case TypeTag::TEXT: {
+      auto text = std::get<string>(record.values.at(i));
+      WriteU16(static_cast<u16>(text.size()));
+      WriteText(text);
+      break;
+    }
+    default: { throw DBException("BLOB type is not supported yet"); }
+    }
+  };
+  for (size_t i = 0; i < columns.size(); i++) {
+    if (columns.at(i).nullable) {
+      if (holds_alternative<monostate>(record.values.at(i))) {
+        WriteU8(1);
+      } else {
+        WriteU8(0);
+      }
+      WriteValue(i);
+    } else {
+      WriteValue(i);
+    }
   }
 }
 
@@ -113,4 +148,10 @@ void SaveHeader(Buffer &buffer, const PageHeader &header) {
     buffer.WriteU16(recordInfo.location);
     buffer.WriteU16(recordInfo.size);
   }
+}
+
+void PreserveBufferPos(Buffer &buffer, std::function<void()> action) {
+  auto currentPos = buffer.pos;
+  action();
+  buffer.pos = currentPos;
 }

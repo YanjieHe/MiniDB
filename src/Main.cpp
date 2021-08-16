@@ -22,6 +22,7 @@ void LoadPage() {
   for (const auto &col : page.columns) {
     cout << std::setw(4) << DBColumnToJson(col) << endl;
   }
+  cout << "page.NumOfRows() = " << page.NumOfRows() << endl;
   for (size_t i = 0; i < page.NumOfRows(); i++) {
     const auto &record = page.GetRow(buffer, i);
     cout << std::setw(4) << DBRowToJson(record) << endl;
@@ -35,11 +36,32 @@ void SavePage() {
                                                    DBRow::Value(i64(34))}),
                         DBRow(vector<DBRow::Value>{DBRow::Value(string("Bar")),
                                                    DBRow::Value(i64(87))})};
-  Page page(columns, records, PAGE_SIZE);
-  page.AddRow(DBRow(vector<DBRow::Value>{DBRow::Value(string("Foo Bar")),
-                                         DBRow::Value(i64(99))}));
   Buffer buffer(PAGE_SIZE);
-  page.Write(buffer);
+  PageHeader pageHeader = EmptyTablePageHeader(PAGE_SIZE);
+  PreserveBufferPos(buffer, [&]() { SaveHeader(buffer, pageHeader); });
+  cout << std::setw(4) << PageHeaderToJson(pageHeader) << endl;
+
+  PreserveBufferPos(buffer, [&]() { LoadHeader(buffer, pageHeader); });
+  cout << std::setw(4) << PageHeaderToJson(pageHeader) << endl;
+
+  Page page(columns, buffer, PAGE_SIZE);
+  cout << std::setw(4) << PageHeaderToJson(page.header) << endl;
+
+  for (auto record : records) {
+    if (page.AddRow(buffer, record) == false) {
+      cout << "out of space" << endl;
+    }
+  }
+  if (page.AddRow(buffer, DBRow(vector<DBRow::Value>{
+                              DBRow::Value(string("Foo Bar")),
+                              DBRow::Value(i64(99))})) == false) {
+    cout << "out of space" << endl;
+  }
+  cout << "page.NumOfRows() = " << page.NumOfRows() << endl;
+  page.UpdateHeader(buffer);
+  DatabaseHeader dbHeader;
+  dbHeader.pageSize = PAGE_SIZE;
+  CreateEmptyDatabaseFile("output/data.bin", dbHeader);
   BufferManager bufferManager("output/data.bin");
   bufferManager.SaveBuffer(0, buffer);
 }
