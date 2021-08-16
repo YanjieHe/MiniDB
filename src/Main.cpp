@@ -32,10 +32,9 @@ void LoadPage() {
 void SavePage() {
   vector<DBColumn> columns{DBColumn(false, TypeTag::TEXT, "name"),
                            DBColumn(false, TypeTag::INTEGER, "age")};
-  vector<DBRow> records{DBRow(vector<DBRow::Value>{DBRow::Value(string("Foo")),
-                                                   DBRow::Value(i64(34))}),
-                        DBRow(vector<DBRow::Value>{DBRow::Value(string("Bar")),
-                                                   DBRow::Value(i64(87))})};
+  vector<DBRow> records{
+      DBRow({DBRow::Value(string("Foo")), DBRow::Value(i64(34))}),
+      DBRow({DBRow::Value(string("Bar")), DBRow::Value(i64(87))})};
   Buffer buffer(PAGE_SIZE);
   PageHeader pageHeader = EmptyTablePageHeader(PAGE_SIZE);
   PreserveBufferPos(buffer, [&]() { SaveHeader(buffer, pageHeader); });
@@ -52,9 +51,8 @@ void SavePage() {
       cout << "out of space" << endl;
     }
   }
-  if (page.AddRow(buffer, DBRow(vector<DBRow::Value>{
-                              DBRow::Value(string("Foo Bar")),
-                              DBRow::Value(i64(99))})) == false) {
+  if (page.AddRow(buffer, DBRow({DBRow::Value(string("Foo Bar")),
+                                 DBRow::Value(i64(99))})) == false) {
     cout << "out of space" << endl;
   }
   cout << "page.NumOfRows() = " << page.NumOfRows() << endl;
