@@ -41,6 +41,9 @@ public:
              const vector<DBRowInfo> &recordInfoArray)
       : pageType{pageType}, numOfEntries{numOfEntries},
         endOfFreeSpace{endOfFreeSpace}, recordInfoArray{recordInfoArray} {}
+  size_t ByteSize() const {
+    return sizeof(u8) + sizeof(u16) * 2 + sizeof(u16) * 2 * numOfEntries;
+  }
 };
 
 class DatabaseHeader {
@@ -51,5 +54,5 @@ public:
 };
 
 PageHeader EmptyTablePageHeader(size_t pageSize);
-json PageHeaderToJson(const PageHeader& header);
+json PageHeaderToJson(const PageHeader &header);
 #endif // HEADER_HPP

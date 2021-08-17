@@ -1,4 +1,4 @@
-#include "Index.hpp"
+#include "DBIndex.hpp"
 #include "DBException.hpp"
 
 using std::holds_alternative;

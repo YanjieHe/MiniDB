@@ -1,5 +1,5 @@
-#ifndef INDEX_HPP
-#define INDEX_HPP
+#ifndef DBINDEX_HPP
+#define DBINDEX_HPP
 #include "Buffer.hpp"
 #include "BufferManager.hpp"
 #include "DBColumn.hpp"
@@ -29,12 +29,6 @@ public:
   explicit DBIndex(vector<Key> keys) : keys{keys} {}
 };
 
-class BPlusNode {
-public:
-  DataPointer pointer;
-  DBIndex key;
-};
-
 template <typename T> int GetComparisonIntResult(const T &x, const T &y);
 
 int CompareIndexKey(const DBIndex::Key &x, const DBIndex::Key &y);
@@ -50,4 +44,4 @@ template <typename T> int GetComparisonIntResult(const T &x, const T &y) {
   }
 }
 
-#endif // INDEX_HPP
+#endif // DBINDEX_HPP

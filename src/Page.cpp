@@ -7,9 +7,7 @@ Page::Page(const vector<DBColumn> &columns, Buffer &buffer, size_t pageSize)
 
 bool Page::AddRow(Buffer &buffer, const DBRow &record) {
   u16 size = ComputeRowSize(record, columns);
-  u16 remainingSpace =
-      header.endOfFreeSpace -
-      (header.numOfEntries * 2 * sizeof(u16) + 2 * sizeof(u16));
+  u16 remainingSpace = header.endOfFreeSpace - header.ByteSize();
   if (remainingSpace > size) {
     header.numOfEntries++;
     DBRowInfo dbRowInfo = DBRowInfo(header.endOfFreeSpace - size, size);
