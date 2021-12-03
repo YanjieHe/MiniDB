@@ -23,6 +23,36 @@ bool Page::AddRow(Buffer &buffer, const DBRow &record) {
   }
 }
 
+bool Page::InsertRow(Buffer &buffer, const DBRow &record, size_t pos) {
+  if (header.numOfEntries == 0 && pos == 0) {
+    return AddRow(buffer, record);
+  } else {
+    u16 size = ComputeRowSize(record, columns);
+    u16 remainingSpace = header.endOfFreeSpace - header.ByteSize();
+    if (remainingSpace > size) {
+      header.numOfEntries++;
+      size_t location = header.recordInfoArray.at(pos).location;
+      DBRowInfo dbRowInfo = DBRowInfo(location, size);
+      size_t totalSize = 0;
+      for (size_t i = pos; i < header.recordInfoArray.size(); i++) {
+        totalSize = header.recordInfoArray.at(i).size;
+      }
+      header.recordInfoArray.insert(header.recordInfoArray.begin() + pos,
+                                    dbRowInfo);
+      buffer.MoveBlock(header.endOfFreeSpace, totalSize,
+                       header.endOfFreeSpace - size);
+      header.endOfFreeSpace = header.endOfFreeSpace - size;
+      PreserveBufferPos(buffer, [&]() {
+        buffer.pos = dbRowInfo.location;
+        buffer.WriteRecord(columns, record);
+      });
+      return true;
+    } else {
+      return false;
+    }
+  }
+}
+
 DBRow Page::GetRow(Buffer &buffer, u16 index) {
   const auto &info = header.recordInfoArray.at(index);
   DBRow row;
