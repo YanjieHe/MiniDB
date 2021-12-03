@@ -1,6 +1,7 @@
 #include "Buffer.hpp"
 #include "DBException.hpp"
 #include <bit_converter/bit_converter.hpp>
+#include <cstring>
 
 using std::holds_alternative;
 
@@ -126,6 +127,12 @@ void Buffer::WriteRecord(const vector<DBColumn> &columns, const DBRow &record) {
       WriteValue(i);
     }
   }
+}
+
+void Buffer::MoveBlock(size_t srcStart, size_t size, size_t destStart) {
+  vector<u8> temporaryBytes(size);
+  std::memcpy(temporaryBytes.data(), bytes.data() + srcStart, size);
+  std::memcpy(bytes.data() + destStart, temporaryBytes.data(), size);
 }
 
 void LoadHeader(Buffer &buffer, PageHeader &header) {
