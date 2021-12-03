@@ -1,5 +1,5 @@
-#ifndef DBINDEX_HPP
-#define DBINDEX_HPP
+#ifndef DB_INDEX_HPP
+#define DB_INDEX_HPP
 #include "Buffer.hpp"
 #include "BufferManager.hpp"
 #include "DBColumn.hpp"
@@ -34,6 +34,7 @@ template <typename T> int GetComparisonIntResult(const T &x, const T &y);
 int CompareIndexKey(const DBIndex::Key &x, const DBIndex::Key &y);
 int CompareIndex(const DBIndex &x, const DBIndex &y);
 
+/************ Template Function Implementation ************/
 template <typename T> int GetComparisonIntResult(const T &x, const T &y) {
   if (x < y) {
     return -1;
@@ -44,4 +45,4 @@ template <typename T> int GetComparisonIntResult(const T &x, const T &y) {
   }
 }
 
-#endif // DBINDEX_HPP
+#endif // DB_INDEX_HPP
