@@ -65,7 +65,7 @@ DBRow Page::GetRow(Buffer &buffer, u16 index) {
 
 void Page::UpdateHeader(Buffer &buffer) const {
   PreserveBufferPos(buffer, [&]() {
-    buffer.Reset();
+    buffer.ResetPosition();
     SaveHeader(buffer, header);
   });
 }

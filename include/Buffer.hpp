@@ -29,7 +29,7 @@ public:
   void ReadRecordFieldValue(DBRow &record, const DBColumn &col);
   void WriteRecord(const vector<DBColumn> &columns, const DBRow &record);
 
-  void Reset() { pos = 0; }
+  void ResetPosition() { pos = 0; }
   void MoveBlock(size_t srcStart, size_t size, size_t destStart);
 };
 

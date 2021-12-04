@@ -54,6 +54,7 @@ void PrintFormattedJson(json jsonObj) {
 }
 
 void LoadPage() {
+  cout << __FUNCTION__ << endl;
   vector<DBColumn> columns{DBColumn(false, TypeTag::TEXT, "name"),
                            DBColumn(false, TypeTag::INTEGER, "age")};
   Buffer buffer(PAGE_SIZE);
@@ -71,11 +72,13 @@ void LoadPage() {
 }
 
 void SavePage() {
+  cout << __FUNCTION__ << endl;
   vector<DBColumn> columns{DBColumn(false, TypeTag::TEXT, "name"),
                            DBColumn(false, TypeTag::INTEGER, "age")};
   vector<DBRow> records{
       DBRow({DBRow::Value(string("Foo")), DBRow::Value(i64(34))}),
       DBRow({DBRow::Value(string("Bar")), DBRow::Value(i64(87))})};
+
   Buffer buffer(PAGE_SIZE);
   PageHeader pageHeader = EmptyTablePageHeader(PAGE_SIZE);
   PreserveBufferPos(buffer, [&]() { SaveHeader(buffer, pageHeader); });
@@ -98,6 +101,11 @@ void SavePage() {
   }
   cout << "page.NumOfRows() = " << page.NumOfRows() << endl;
   page.UpdateHeader(buffer);
+  cout << "updated header: " << endl;
+  PreserveBufferPos(buffer, [&]() { LoadHeader(buffer, pageHeader); });
+  PrintFormattedJson(PageHeaderToJson(pageHeader));
+  cout << endl;
+
   DatabaseHeader dbHeader;
   dbHeader.pageSize = PAGE_SIZE;
   CreateEmptyDatabaseFile("output/data.bin", dbHeader);
