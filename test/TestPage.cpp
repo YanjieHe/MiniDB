@@ -1,6 +1,6 @@
-#include <catch2/catch.hpp>
 #include "BufferManager.hpp"
 #include "Page.hpp"
+#include <catch2/catch.hpp>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -49,6 +49,10 @@ Buffer CreateExamplePage() {
   return buffer;
 }
 
+void PrintFormattedJson(json jsonObj) {
+  cout << std::setw(4) << jsonObj << endl;
+}
+
 void LoadPage() {
   vector<DBColumn> columns{DBColumn(false, TypeTag::TEXT, "name"),
                            DBColumn(false, TypeTag::INTEGER, "age")};
@@ -57,12 +61,12 @@ void LoadPage() {
   bufferManager.LoadBuffer(0, buffer);
   Page page(columns, buffer, PAGE_SIZE);
   for (const auto &col : page.columns) {
-    cout << std::setw(4) << DBColumnToJson(col) << endl;
+    PrintFormattedJson(DBColumnToJson(col));
   }
   cout << "page.NumOfRows() = " << page.NumOfRows() << endl;
   for (size_t i = 0; i < page.NumOfRows(); i++) {
     const auto &record = page.GetRow(buffer, i);
-    cout << std::setw(4) << DBRowToJson(record) << endl;
+    PrintFormattedJson(DBRowToJson(record));
   }
 }
 
@@ -75,13 +79,13 @@ void SavePage() {
   Buffer buffer(PAGE_SIZE);
   PageHeader pageHeader = EmptyTablePageHeader(PAGE_SIZE);
   PreserveBufferPos(buffer, [&]() { SaveHeader(buffer, pageHeader); });
-  cout << std::setw(4) << PageHeaderToJson(pageHeader) << endl;
+  PrintFormattedJson(PageHeaderToJson(pageHeader));
 
   PreserveBufferPos(buffer, [&]() { LoadHeader(buffer, pageHeader); });
-  cout << std::setw(4) << PageHeaderToJson(pageHeader) << endl;
+  PrintFormattedJson(PageHeaderToJson(pageHeader));
 
   Page page(columns, buffer, PAGE_SIZE);
-  cout << std::setw(4) << PageHeaderToJson(page.header) << endl;
+  PrintFormattedJson(PageHeaderToJson(pageHeader));
 
   for (auto record : records) {
     if (page.AddRow(buffer, record) == false) {
