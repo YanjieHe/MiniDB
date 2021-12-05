@@ -118,8 +118,8 @@ TEST_CASE("Test Page", "[Page]") {
     SavePage();
     LoadPage();
   }
-  SECTION("Insert Row") {
-    cout << "========== Insert Row ==========" << endl;
+  SECTION("Insert a Row") {
+    cout << "========== Insert a Row ==========" << endl;
     Buffer buffer = CreateExamplePage();
     auto columns = ExampleColumns();
     Page page(columns, buffer, PAGE_SIZE);
