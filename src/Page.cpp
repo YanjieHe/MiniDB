@@ -62,6 +62,33 @@ bool Page::InsertRow(Buffer &buffer, const DBRow &record, size_t pos) {
   }
 }
 
+bool Page::DeleteRow(Buffer &buffer, size_t pos) {
+  if (header.numOfEntries == 0 || pos >= header.recordInfoArray.size()) {
+    return false;
+  } else {
+    header.numOfEntries--;
+    size_t size = header.recordInfoArray.at(pos).size;
+    header.recordInfoArray.erase(header.recordInfoArray.begin() + pos);
+
+    // aggregate the total size of the block that needs to be moved
+    size_t totalSize = 0;
+    for (size_t i = pos; i < header.recordInfoArray.size(); i++) {
+      totalSize = totalSize + header.recordInfoArray.at(i).size;
+    }
+
+    // adjust record information array
+    for (size_t i = pos; i < header.recordInfoArray.size(); i++) {
+      header.recordInfoArray.at(i).location =
+          header.recordInfoArray.at(i).location + size;
+    }
+
+    buffer.MoveBlock(header.endOfFreeSpace, totalSize,
+                     header.endOfFreeSpace + size);
+    header.endOfFreeSpace = header.endOfFreeSpace + size;
+    return true;
+  }
+}
+
 DBRow Page::GetRow(Buffer &buffer, u16 index) {
   const auto &info = header.recordInfoArray.at(index);
   DBRow row;

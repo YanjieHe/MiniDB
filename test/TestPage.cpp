@@ -114,14 +114,17 @@ void SavePage() {
 }
 
 TEST_CASE("Test Page", "[Page]") {
+  Buffer buffer = CreateExamplePage();
+  auto columns = ExampleColumns();
+  DatabaseHeader dbHeader;
+  dbHeader.pageSize = PAGE_SIZE;
+
   SECTION("Save & Load Page") {
     SavePage();
     LoadPage();
   }
   SECTION("Insert a Row") {
     cout << "========== Insert a Row ==========" << endl;
-    Buffer buffer = CreateExamplePage();
-    auto columns = ExampleColumns();
     Page page(columns, buffer, PAGE_SIZE);
     cout << "page.NumOfRows() = " << page.NumOfRows() << endl;
     DBRow record({DBRow::Value(string("Baz")), DBRow::Value(i64(17))});
@@ -129,8 +132,20 @@ TEST_CASE("Test Page", "[Page]") {
     cout << "page.NumOfRows() = " << page.NumOfRows() << endl;
     page.UpdateHeader(buffer);
 
-    DatabaseHeader dbHeader;
-    dbHeader.pageSize = PAGE_SIZE;
+    CreateEmptyDatabaseFile("output/data.bin", dbHeader);
+    BufferManager bufferManager("output/data.bin");
+    bufferManager.SaveBuffer(0, buffer);
+
+    LoadPage();
+  }
+  SECTION("Delete a Row") {
+    cout << "========== Delete a Row ==========" << endl;
+    Page page(columns, buffer, PAGE_SIZE);
+    cout << "page.NumOfRows() = " << page.NumOfRows() << endl;
+    page.DeleteRow(buffer, 1);
+    cout << "page.NumOfRows() = " << page.NumOfRows() << endl;
+    page.UpdateHeader(buffer);
+
     CreateEmptyDatabaseFile("output/data.bin", dbHeader);
     BufferManager bufferManager("output/data.bin");
     bufferManager.SaveBuffer(0, buffer);

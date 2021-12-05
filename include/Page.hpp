@@ -12,6 +12,7 @@ public:
   /************ Row Operations ************/
   bool AddRow(Buffer &buffer, const DBRow &record);
   bool InsertRow(Buffer &buffer, const DBRow &record, size_t pos);
+  bool DeleteRow(Buffer& buffer, size_t pos);
   DBRow GetRow(Buffer &buffer, u16 index);
 
   void UpdateHeader(Buffer &buffer) const;
