@@ -65,6 +65,7 @@ void LoadPage() {
     PrintFormattedJson(DBColumnToJson(col));
   }
   cout << "page.NumOfRows() = " << page.NumOfRows() << endl;
+  PrintFormattedJson(PageHeaderToJson(page.header));
   for (size_t i = 0; i < page.NumOfRows(); i++) {
     const auto &record = page.GetRow(buffer, i);
     PrintFormattedJson(DBRowToJson(record));
@@ -101,7 +102,6 @@ void SavePage() {
   }
   cout << "page.NumOfRows() = " << page.NumOfRows() << endl;
   page.UpdateHeader(buffer);
-  cout << "updated header: " << endl;
   PreserveBufferPos(buffer, [&]() { LoadHeader(buffer, pageHeader); });
   PrintFormattedJson(PageHeaderToJson(pageHeader));
   cout << endl;
@@ -119,11 +119,15 @@ TEST_CASE("Test Page", "[Page]") {
     LoadPage();
   }
   SECTION("Insert Row") {
+    cout << "========== Insert Row ==========" << endl;
     Buffer buffer = CreateExamplePage();
     auto columns = ExampleColumns();
     Page page(columns, buffer, PAGE_SIZE);
+    cout << "page.NumOfRows() = " << page.NumOfRows() << endl;
     DBRow record({DBRow::Value(string("Baz")), DBRow::Value(i64(17))});
     page.InsertRow(buffer, record, 1);
+    cout << "page.NumOfRows() = " << page.NumOfRows() << endl;
+    page.UpdateHeader(buffer);
 
     DatabaseHeader dbHeader;
     dbHeader.pageSize = PAGE_SIZE;
