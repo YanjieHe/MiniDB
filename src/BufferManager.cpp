@@ -3,12 +3,11 @@
 
 using std::ifstream;
 using std::ofstream;
+using std::fstream;
 
 BufferManager::BufferManager(string path) : path{path} {
   ifstream stream(path, std::ios::binary);
-  Buffer buffer(header.ByteSize());
-  stream.read(reinterpret_cast<char *>(buffer.bytes.data()),
-              buffer.bytes.size());
+  Buffer buffer(sizeof(i64));
   header.pageSize = static_cast<size_t>(buffer.ReadI64());
 }
 
@@ -21,7 +20,7 @@ void BufferManager::LoadBuffer(u16 bufferID, Buffer &buffer) {
 }
 
 void BufferManager::SaveBuffer(u16 bufferID, Buffer &buffer) {
-  ofstream stream(path, std::ios::binary);
+  fstream stream(path, fstream::in | fstream::out | fstream::binary);
   stream.seekp(PageStart(bufferID));
   stream.write(reinterpret_cast<char *>(buffer.bytes.data()),
                buffer.bytes.size());
