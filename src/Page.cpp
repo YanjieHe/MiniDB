@@ -5,6 +5,10 @@ Page::Page(const vector<DBColumn> &columns, Buffer &buffer, size_t pageSize)
   PreserveBufferPos(buffer, [&]() { LoadHeader(buffer, header); });
 }
 
+Page::Page(PageHeader pageHeader, const vector<DBColumn> &columns)
+    : header{pageHeader}, columns{columns} {
+}
+
 bool Page::AddRow(Buffer &buffer, const DBRow &record) {
   u16 size = ComputeRowSize(record, columns);
   u16 remainingSpace = header.endOfFreeSpace - header.ByteSize();
@@ -89,7 +93,7 @@ bool Page::DeleteRow(Buffer &buffer, size_t pos) {
   }
 }
 
-DBRow Page::GetRow(Buffer &buffer, u16 index) {
+DBRow Page::GetRow(Buffer &buffer, u16 index) const {
   const auto &info = header.recordInfoArray.at(index);
   DBRow row;
   PreserveBufferPos(buffer, [&]() {
