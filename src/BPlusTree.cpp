@@ -75,7 +75,7 @@ optional<i64> BPlusTree::Search(DBIndex indexToSearch) {
     // not found
     return {};
   } else {
-    // tree is empty
+    // the tree is empty
     return {};
   }
 }
