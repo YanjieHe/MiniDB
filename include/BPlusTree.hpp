@@ -35,6 +35,7 @@ public:
             const vector<DBColumn> &columns);
 
   optional<i64> Search(DBIndex indexToSearch);
+  optional<BPlusTreeNode> FindParent(BPlusTreeNode cursor, BPlusTreeNode child);
   u16 CreateNewNode();
   Page LoadPage(size_t pageID);
 

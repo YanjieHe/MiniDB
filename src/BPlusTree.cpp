@@ -3,9 +3,11 @@
 #include "Page.hpp"
 
 using std::holds_alternative;
+using std::make_optional;
 
 BPlusTreeNode::BPlusTreeNode(u16 pageID) : pageID{pageID} {}
-BPlusTreeNode::BPlusTreeNode(const BPlusTreeNode &other) : pageID{other.pageID} {}
+BPlusTreeNode::BPlusTreeNode(const BPlusTreeNode &other)
+    : pageID{other.pageID} {}
 
 bool BPlusTreeNode::IsLeaf(const Page &page) const {
   return page.header.pageType == PageType::B_PLUS_TREE_LEAF;
@@ -40,6 +42,7 @@ optional<i64> BPlusTree::Search(DBIndex indexToSearch) {
     while (cursor.IsLeaf(page) == false) {
       for (size_t i = 0; i < cursor.Size(page); i++) {
         // if the element to be found is not the current one
+        // make sure the buffer is for the current page
         DBRow keyValuePair = page.GetRow(buffer, i);
         int comparisonResult =
             CompareIndex(indexToSearch, GetIndexFromRow(keyValuePair));
@@ -52,7 +55,7 @@ optional<i64> BPlusTree::Search(DBIndex indexToSearch) {
         // if the program reaches the end of the cursor node
         if (i + 1 == cursor.Size(page)) {
           DBRow valueRow = page.GetRow(buffer, i + 1);
-          i64 pointer = GetPointerValueFromRow(keyValuePair);
+          i64 pointer = GetPointerValueFromRow(valueRow);
           cursor = BPlusTreeNode(static_cast<u16>(pointer));
           page = LoadPage(cursor.pageID);
           break;
@@ -68,7 +71,7 @@ optional<i64> BPlusTree::Search(DBIndex indexToSearch) {
           CompareIndex(indexToSearch, GetIndexFromRow(keyValuePair));
       if (comparisonResult == 0) {
         // found
-        return GetPointerValueFromRow(keyValuePair);
+        return make_optional(GetPointerValueFromRow(keyValuePair));
       }
     }
     // otherwise, the element is not in the tree
@@ -78,6 +81,44 @@ optional<i64> BPlusTree::Search(DBIndex indexToSearch) {
     // the tree is empty
     return {};
   }
+}
+
+optional<BPlusTreeNode> BPlusTree::FindParent(BPlusTreeNode cursor,
+                                              BPlusTreeNode child) {
+  Page page = LoadPage(cursor.pageID);
+  // if the cursor reaches the end of the tree
+  if (cursor.IsLeaf(page)) {
+    return {};
+  } else {
+    DBRow keyValuePair = page.GetRow(buffer, 0);
+    i64 pointer = GetPointerValueFromRow(keyValuePair);
+    BPlusTreeNode cursorChild = BPlusTreeNode(static_cast<u16>(pointer));
+    page = LoadPage(cursorChild.pageID);
+    if (cursorChild.IsLeaf(page)) {
+      return {};
+    } else {
+      page = LoadPage(cursor.pageID);
+    }
+  }
+  // traverse the current node wtih every child of it
+  for (size_t i = 0; i < cursor.Size(page) + 1; i++) {
+    // update the parent for the child node
+    DBRow keyValuePair = page.GetRow(buffer, i);
+    i64 pointer = GetPointerValueFromRow(keyValuePair);
+    if (static_cast<u16>(pointer) == child.pageID) {
+      return make_optional(cursor);
+    } else {
+      // otherwise, recursively traverse to find the child node
+      cursor = BPlusTreeNode(static_cast<u16>(pointer));
+      optional<BPlusTreeNode> parent = FindParent(cursor, child);
+      // if the parent is found, then return the parent node
+      if (parent) {
+        return parent;
+      }
+    }
+  }
+  // the parent is not found
+  return {};
 }
 
 u16 BPlusTree::CreateNewNode() {
