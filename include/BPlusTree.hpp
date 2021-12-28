@@ -10,7 +10,6 @@ using std::optional;
 
 class BPlusTreeNode {
 public:
-  const int MAX = 3;
   u16 pageID;
 
   explicit BPlusTreeNode(u16 pageID);
@@ -23,6 +22,7 @@ public:
 
 class BPlusTree {
 public:
+  size_t order;
   BufferManager &bufferManager;
   optional<u16> rootPageID;
   size_t pageSize;
@@ -30,10 +30,12 @@ public:
   Buffer buffer;
   vector<DBColumn> columns;
 
-  BPlusTree(BufferManager &bufferManager, optional<u16> rootPageID,
+  BPlusTree(size_t order, BufferManager &bufferManager, optional<u16> rootPageID,
             size_t pageSize, size_t maxNumOfKeysInOnePage,
             const vector<DBColumn> &columns);
 
+  void Insert(DBIndex indexToInsert, i64 dataPointerVal);
+  void InsertInternal(DBIndex indexToInsert, BPlusTreeNode cursor, BPlusTreeNode child);
   optional<i64> Search(DBIndex indexToSearch);
   optional<BPlusTreeNode> FindParent(BPlusTreeNode cursor, BPlusTreeNode child);
   u16 CreateNewNode();

@@ -5,6 +5,10 @@
 using std::holds_alternative;
 using std::make_optional;
 
+/* An example of a B+ tree node:
+P1 | K1 | P2 | K2 | P3 | K3 | P4
+*/
+
 BPlusTreeNode::BPlusTreeNode(u16 pageID) : pageID{pageID} {}
 BPlusTreeNode::BPlusTreeNode(const BPlusTreeNode &other)
     : pageID{other.pageID} {}
@@ -26,34 +30,100 @@ BPlusTreeNode BPlusTreeNode::operator=(const BPlusTreeNode &other) {
   return other;
 }
 
-BPlusTree::BPlusTree(BufferManager &bufferManager, optional<u16> rootPageID,
-                     size_t pageSize, size_t maxNumOfKeysInOnePage,
+BPlusTree::BPlusTree(size_t order, BufferManager &bufferManager,
+                     optional<u16> rootPageID, size_t pageSize,
+                     size_t maxNumOfKeysInOnePage,
                      const vector<DBColumn> &columns)
     : bufferManager{bufferManager}, rootPageID{rootPageID}, pageSize{pageSize},
       maxNumOfKeysInOnePage{maxNumOfKeysInOnePage},
       buffer(pageSize), columns{columns} {}
 
-optional<i64> BPlusTree::Search(DBIndex indexToSearch) {
+void BPlusTree::Insert(DBIndex indexToInsert, i64 dataPointerVal) {
   if (rootPageID.has_value()) {
-    // traverse to find the pointer value
+    bufferManager.LoadBuffer(rootPageID.value(), buffer);
+    Page page(columns, buffer, pageSize);
+
+    for (size_t i = 0; i < page.NumOfRows(); i++) {
+      DBRow row = page.GetRow(buffer, i);   // get current row
+      DBIndex index = GetIndexFromRow(row); // get current index
+      // if the index to insert is less than the current index
+      if (CompareIndex(indexToInsert, index) < 0) {
+        // found the position for the new key-value pair
+        if (page.NumOfRows() >= maxNumOfKeysInOnePage) {
+          // split the current node
+        } else {
+          // insert the new key-value pair in the current page
+          page.InsertRow(buffer,
+                         ConvertIndexToRow(indexToInsert, dataPointerVal), i);
+          page.UpdateHeader(buffer);
+          return; // complete insertion
+        }
+      }
+    }
+    // the index should be placed at the rightmost position
+    if (page.NumOfRows() >= maxNumOfKeysInOnePage) {
+      // split the current node
+    } else {
+      // note that the rows in the buffer are in reversed order
+      page.AddRow(buffer, ConvertIndexToRow(indexToInsert, dataPointerVal));
+      page.UpdateHeader(buffer);
+    }
+  }
+}
+
+void BPlusTree::InsertInternal(DBIndex indexToInsert, BPlusTreeNode cursor,
+                               BPlusTreeNode child) {
+  Page page = LoadPage(cursor.pageID);
+  // if we don't have overflow
+  if (cursor.Size(page) < order) {
+    size_t i = 0;
+    // traverse the child node for the current cursor node
+    DBRow keyValuePair;
+    int comparisonResult;
+    for (keyValuePair = page.GetRow(buffer, i),
+        comparisonResult =
+             CompareIndex(indexToInsert, GetIndexFromRow(keyValuePair));
+         comparisonResult > 0 && i < cursor.Size(page); i++)
+      ;
+    page.InsertRow(
+        buffer,
+        ConvertIndexToRow(indexToInsert, static_cast<i64>(child.pageID)), i);
+  } else {
+    // split the node
+    u16 newPageID = CreateNewNode();
+    page = LoadPage(newPageID);
+    // insert the current list key of cursor node to virtual key
+    int i = 0;
+    int j;
+  }
+}
+
+optional<i64> BPlusTree::Search(DBIndex indexToSearch) {
+  /* Assumes no duplicate keys, and returns the record pointer that points to
+   * record with the search key, if such a key exists. */
+  if (rootPageID.has_value()) {
+    // set the cursor as the root node
     BPlusTreeNode cursor(rootPageID.value());
     Page page = LoadPage(cursor.pageID);
-    // till we reach leaf node
+    // while the cursor is not a leaf node, keep searching till we find a leaf
+    // node
     while (cursor.IsLeaf(page) == false) {
+      // iterate through all the key-value pairs in the B+ tree node
       for (size_t i = 0; i < cursor.Size(page); i++) {
-        // if the element to be found is not the current one
         // make sure the buffer is for the current page
         DBRow keyValuePair = page.GetRow(buffer, i);
         int comparisonResult =
             CompareIndex(indexToSearch, GetIndexFromRow(keyValuePair));
+        // if search key < current key
         if (comparisonResult < 0) {
           i64 pointer = GetPointerValueFromRow(keyValuePair);
           cursor = BPlusTreeNode(static_cast<u16>(pointer));
           page = LoadPage(cursor.pageID);
           break;
         }
-        // if the program reaches the end of the cursor node
+        // if the program reaches the end of the key-value pairs
         if (i + 1 == cursor.Size(page)) {
+          // follow the last pointer and load the page it points
           DBRow valueRow = page.GetRow(buffer, i + 1);
           i64 pointer = GetPointerValueFromRow(valueRow);
           cursor = BPlusTreeNode(static_cast<u16>(pointer));
@@ -65,17 +135,15 @@ optional<i64> BPlusTree::Search(DBIndex indexToSearch) {
 
     // traverse the cursor and find the node with value x
     for (size_t i = 0; i < cursor.Size(page); i++) {
-      // if found then return
       DBRow keyValuePair = page.GetRow(buffer, i);
       int comparisonResult =
           CompareIndex(indexToSearch, GetIndexFromRow(keyValuePair));
+      // if the search key is found then return the pointer
       if (comparisonResult == 0) {
-        // found
         return make_optional(GetPointerValueFromRow(keyValuePair));
       }
     }
-    // otherwise, the element is not in the tree
-    // not found
+    // the search key is not in the tree
     return {};
   } else {
     // the tree is empty
