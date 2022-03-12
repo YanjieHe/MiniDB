@@ -8,7 +8,8 @@
 
 using std::variant;
 
-class DataPointer {
+class DataPointer
+{
 public:
   u16 bufferID;
   u16 posIndex;
@@ -19,7 +20,8 @@ public:
       : bufferID{bufferID}, posIndex{posIndex} {}
 };
 
-class DBIndex {
+class DBIndex
+{
 public:
   typedef variant<i64, string> Key;
 
@@ -29,18 +31,26 @@ public:
   explicit DBIndex(vector<Key> keys) : keys{keys} {}
 };
 
-template <typename T> int GetComparisonIntResult(const T &x, const T &y);
+template <typename T>
+int GetComparisonIntResult(const T &x, const T &y);
 
 int CompareIndexKey(const DBIndex::Key &x, const DBIndex::Key &y);
 int CompareIndex(const DBIndex &x, const DBIndex &y);
 
 /************ Template Function Implementation ************/
-template <typename T> int GetComparisonIntResult(const T &x, const T &y) {
-  if (x < y) {
+template <typename T>
+int GetComparisonIntResult(const T &x, const T &y)
+{
+  if (x < y)
+  {
     return -1;
-  } else if (x > y) {
+  }
+  else if (x > y)
+  {
     return 1;
-  } else {
+  }
+  else
+  {
     return 0;
   }
 }

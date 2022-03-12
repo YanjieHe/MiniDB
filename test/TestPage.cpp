@@ -32,7 +32,7 @@ Buffer CreateExamplePage() {
   vector<DBRow> records = ExampleRows();
   Buffer buffer(PAGE_SIZE);
   PageHeader pageHeader = EmptyTablePageHeader(PAGE_SIZE);
-  PreserveBufferPos(buffer, [&]() { SaveHeader(buffer, pageHeader); });
+  buffer.PreserveBufferPos([&]() { buffer.SaveHeader(pageHeader); });
 
   Page page(columns, buffer, PAGE_SIZE);
 
@@ -82,10 +82,10 @@ void SavePage() {
 
   Buffer buffer(PAGE_SIZE);
   PageHeader pageHeader = EmptyTablePageHeader(PAGE_SIZE);
-  PreserveBufferPos(buffer, [&]() { SaveHeader(buffer, pageHeader); });
+  buffer.PreserveBufferPos([&]() { buffer.SaveHeader(pageHeader); });
   PrintFormattedJson(PageHeaderToJson(pageHeader));
 
-  PreserveBufferPos(buffer, [&]() { LoadHeader(buffer, pageHeader); });
+  buffer.PreserveBufferPos([&]() { buffer.LoadHeader(pageHeader); });
   PrintFormattedJson(PageHeaderToJson(pageHeader));
 
   Page page(columns, buffer, PAGE_SIZE);
@@ -102,7 +102,7 @@ void SavePage() {
   }
   cout << "page.NumOfRows() = " << page.NumOfRows() << endl;
   page.UpdateHeader(buffer);
-  PreserveBufferPos(buffer, [&]() { LoadHeader(buffer, pageHeader); });
+  buffer.PreserveBufferPos([&]() { buffer.LoadHeader(pageHeader); });
   PrintFormattedJson(PageHeaderToJson(pageHeader));
   cout << endl;
 

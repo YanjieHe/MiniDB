@@ -27,7 +27,8 @@ public:
 enum class PageType {
   B_PLUS_TREE_LEAF = 0,
   B_PLUS_TREE_INTERIOR = 1,
-  TABLE = 2
+  B_PLUS_TREE_ROOT = 2,
+  TABLE = 3
 };
 
 class PageHeader {

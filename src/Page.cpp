@@ -2,12 +2,11 @@
 
 Page::Page(const vector<DBColumn> &columns, Buffer &buffer, size_t pageSize)
     : header{EmptyTablePageHeader(pageSize)}, columns{columns} {
-  PreserveBufferPos(buffer, [&]() { LoadHeader(buffer, header); });
+  buffer.PreserveBufferPos([&]() { buffer.LoadHeader(header); });
 }
 
 Page::Page(PageHeader pageHeader, const vector<DBColumn> &columns)
-    : header{pageHeader}, columns{columns} {
-}
+    : header{pageHeader}, columns{columns} {}
 
 bool Page::AddRow(Buffer &buffer, const DBRow &record) {
   u16 size = ComputeRowSize(record, columns);
@@ -17,7 +16,7 @@ bool Page::AddRow(Buffer &buffer, const DBRow &record) {
     DBRowInfo dbRowInfo = DBRowInfo(header.endOfFreeSpace - size, size);
     header.recordInfoArray.push_back(dbRowInfo);
     header.endOfFreeSpace = header.endOfFreeSpace - size;
-    PreserveBufferPos(buffer, [&]() {
+    buffer.PreserveBufferPos([&]() {
       buffer.pos = dbRowInfo.location;
       buffer.WriteRecord(columns, record);
     });
@@ -55,7 +54,7 @@ bool Page::InsertRow(Buffer &buffer, const DBRow &record, size_t pos) {
       buffer.MoveBlock(header.endOfFreeSpace, totalSize,
                        header.endOfFreeSpace - size);
       header.endOfFreeSpace = header.endOfFreeSpace - size;
-      PreserveBufferPos(buffer, [&]() {
+      buffer.PreserveBufferPos([&]() {
         buffer.pos = dbRowInfo.location;
         buffer.WriteRecord(columns, record);
       });
@@ -96,7 +95,7 @@ bool Page::DeleteRow(Buffer &buffer, size_t pos) {
 DBRow Page::GetRow(Buffer &buffer, u16 index) const {
   const auto &info = header.recordInfoArray.at(index);
   DBRow row;
-  PreserveBufferPos(buffer, [&]() {
+  buffer.PreserveBufferPos([&]() {
     buffer.pos = info.location;
     row = buffer.ReadRecord(columns);
   });
@@ -104,8 +103,8 @@ DBRow Page::GetRow(Buffer &buffer, u16 index) const {
 }
 
 void Page::UpdateHeader(Buffer &buffer) const {
-  PreserveBufferPos(buffer, [&]() {
+  buffer.PreserveBufferPos([&]() {
     buffer.ResetPosition();
-    SaveHeader(buffer, header);
+    buffer.SaveHeader(header);
   });
 }

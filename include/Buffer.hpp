@@ -29,12 +29,14 @@ public:
   void ReadRecordFieldValue(DBRow &record, const DBColumn &col);
   void WriteRecord(const vector<DBColumn> &columns, const DBRow &record);
 
+  /************ Load/Save Header ************/
+  void LoadHeader(PageHeader &header);
+  void SaveHeader(const PageHeader &header);
+
+  /************ Utility Methods ************/
   void ResetPosition() { pos = 0; }
   void MoveBlock(size_t srcStart, size_t size, size_t destStart);
+  void PreserveBufferPos(std::function<void()> action);
 };
-
-void LoadHeader(Buffer &buffer, PageHeader &header);
-void SaveHeader(Buffer &buffer, const PageHeader &header);
-void PreserveBufferPos(Buffer &buffer, std::function<void()> action);
 
 #endif // BUFFER_HPP

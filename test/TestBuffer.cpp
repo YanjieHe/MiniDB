@@ -3,7 +3,7 @@
 
 TEST_CASE("Test Buffer", "[Buffer]") {
   Buffer buf(8);
-  SECTION("Test \"MoveBlock\"") {
+  SECTION("Test Moving a Block") {
     buf.bytes = vector<u8>{9, 8, 7, 6, 5, 4, 3, 2};
     buf.ResetPosition();
     buf.MoveBlock(2, 3, 4);

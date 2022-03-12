@@ -91,7 +91,9 @@ void Buffer::ReadRecordFieldValue(DBRow &record, const DBColumn &col) {
     record.values.emplace_back(s);
     break;
   }
-  default: { throw DBException("BLOB type is not supported yet"); }
+  default: {
+    throw DBException("BLOB type is not supported yet");
+  }
   }
 }
 
@@ -112,7 +114,9 @@ void Buffer::WriteRecord(const vector<DBColumn> &columns, const DBRow &record) {
       WriteText(text);
       break;
     }
-    default: { throw DBException("BLOB type is not supported yet"); }
+    default: {
+      throw DBException("BLOB type is not supported yet");
+    }
     }
   };
   for (size_t i = 0; i < columns.size(); i++) {
@@ -129,36 +133,36 @@ void Buffer::WriteRecord(const vector<DBColumn> &columns, const DBRow &record) {
   }
 }
 
+void Buffer::LoadHeader(PageHeader &header) {
+  header.pageType = static_cast<PageType>(ReadU8());
+  header.numOfEntries = ReadU16();
+  header.endOfFreeSpace = ReadU16();
+  header.recordInfoArray.reserve(header.numOfEntries);
+  for (size_t i = 0; i < header.numOfEntries; i++) {
+    u16 location = ReadU16();
+    u16 size = ReadU16();
+    header.recordInfoArray.emplace_back(location, size);
+  }
+}
+
+void Buffer::SaveHeader(const PageHeader &header) {
+  WriteU8(static_cast<u8>(header.pageType));
+  WriteU16(header.numOfEntries);
+  WriteU16(header.endOfFreeSpace);
+  for (const auto &recordInfo : header.recordInfoArray) {
+    WriteU16(recordInfo.location);
+    WriteU16(recordInfo.size);
+  }
+}
+
 void Buffer::MoveBlock(size_t srcStart, size_t size, size_t destStart) {
   vector<u8> temporaryBytes(size);
   std::memcpy(temporaryBytes.data(), bytes.data() + srcStart, size);
   std::memcpy(bytes.data() + destStart, temporaryBytes.data(), size);
 }
 
-void LoadHeader(Buffer &buffer, PageHeader &header) {
-  header.pageType = static_cast<PageType>(buffer.ReadU8());
-  header.numOfEntries = buffer.ReadU16();
-  header.endOfFreeSpace = buffer.ReadU16();
-  header.recordInfoArray.reserve(header.numOfEntries);
-  for (size_t i = 0; i < header.numOfEntries; i++) {
-    u16 location = buffer.ReadU16();
-    u16 size = buffer.ReadU16();
-    header.recordInfoArray.emplace_back(location, size);
-  }
-}
-
-void SaveHeader(Buffer &buffer, const PageHeader &header) {
-  buffer.WriteU8(static_cast<u8>(header.pageType));
-  buffer.WriteU16(header.numOfEntries);
-  buffer.WriteU16(header.endOfFreeSpace);
-  for (const auto &recordInfo : header.recordInfoArray) {
-    buffer.WriteU16(recordInfo.location);
-    buffer.WriteU16(recordInfo.size);
-  }
-}
-
-void PreserveBufferPos(Buffer &buffer, std::function<void()> action) {
-  auto currentPos = buffer.pos;
+void Buffer::PreserveBufferPos(std::function<void()> action) {
+  auto currentPos = pos;
   action();
-  buffer.pos = currentPos;
+  pos = currentPos;
 }
