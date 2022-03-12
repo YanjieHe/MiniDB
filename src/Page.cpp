@@ -27,35 +27,43 @@ bool Page::AddRow(Buffer &buffer, const DBRow &record) {
 }
 
 bool Page::InsertRow(Buffer &buffer, const DBRow &record, size_t pos) {
-  if (header.numOfEntries == 0 && pos == 0) {
+  if (header.numOfEntries == pos) {
     return AddRow(buffer, record);
   } else {
     u16 size = ComputeRowSize(record, columns);
     u16 remainingSpace = header.endOfFreeSpace - header.ByteSize();
     if (remainingSpace > size) {
       header.numOfEntries++;
-      size_t location = header.recordInfoArray.at(pos).location;
-      DBRowInfo dbRowInfo = DBRowInfo(location, size);
+      /* location 0 is a temporary value */
+      DBRowInfo dbRowInfo = DBRowInfo(0, size);
 
       // aggregate the total size of the block that needs to be moved
       size_t totalSize = 0;
       for (size_t i = pos; i < header.recordInfoArray.size(); i++) {
         totalSize = totalSize + header.recordInfoArray.at(i).size;
       }
+      for (size_t i = pos; i < header.recordInfoArray.size(); i++) {
+        header.recordInfoArray.at(i).location -= size;
+      }
 
       // adjust record information array
       header.recordInfoArray.insert(header.recordInfoArray.begin() + pos,
                                     dbRowInfo);
-      for (size_t i = pos + 1; i < header.recordInfoArray.size(); i++) {
-        header.recordInfoArray.at(i).location =
-            header.recordInfoArray.at(i).location - size;
+      if (pos == 0) {
+        header.recordInfoArray.at(pos).location =
+            buffer.bytes.size() - header.ByteSize() -
+            header.recordInfoArray.at(pos).size;
+      } else {
+        header.recordInfoArray.at(pos).location =
+            header.recordInfoArray.at(pos - 1).location -
+            header.recordInfoArray.at(pos).size;
       }
 
       buffer.MoveBlock(header.endOfFreeSpace, totalSize,
                        header.endOfFreeSpace - size);
       header.endOfFreeSpace = header.endOfFreeSpace - size;
       buffer.PreserveBufferPos([&]() {
-        buffer.pos = dbRowInfo.location;
+        buffer.pos = header.recordInfoArray.at(pos).location;
         buffer.WriteRecord(columns, record);
       });
       return true;

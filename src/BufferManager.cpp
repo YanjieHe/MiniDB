@@ -1,14 +1,19 @@
 #include "BufferManager.hpp"
+#include "DBException.hpp"
 #include <fstream>
 
+using std::fstream;
 using std::ifstream;
 using std::ofstream;
-using std::fstream;
 
 BufferManager::BufferManager(string path) : path{path} {
   ifstream stream(path, std::ios::binary);
-  Buffer buffer(sizeof(i64));
-  header.pageSize = static_cast<size_t>(buffer.ReadI64());
+  if (stream) {
+    Buffer buffer(sizeof(i64));
+    header.pageSize = static_cast<size_t>(buffer.ReadI64());
+  } else {
+    throw DBException("Fail to load the database file: " + path);
+  }
 }
 
 void BufferManager::LoadBuffer(u16 bufferID, Buffer &buffer) {

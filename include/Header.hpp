@@ -49,7 +49,7 @@ public:
 
 class DatabaseHeader {
 public:
-  size_t pageSize;
+  i64 pageSize;
 
   size_t ByteSize() const { return sizeof(pageSize); }
 };
