@@ -1,313 +1,387 @@
 #include "BPlusTree.hpp"
+
 #include "DBException.hpp"
 #include "Page.hpp"
 
 using std::holds_alternative;
 using std::make_optional;
+using std::make_shared;
+
+
+IndexPage::IndexPage(const vector<DBColumn> &columns, Buffer &buffer,
+                     size_t pageSize)
+    : header{EmptyIndexPageHeader(pageSize, PageType::B_PLUS_TREE_LEAF)},
+      columns{columns} {
+  buffer.PreserveBufferPos([&]() { buffer.LoadHeader(header); });
+}
+
+IndexPage::IndexPage(PageHeader pageHeader, const vector<DBColumn> &columns)
+    : header{pageHeader}, columns{columns} {}
+
+/* An example of a B+ tree node:
+P1 | K1 | P2 | K2 | P3 | K3 | P4
+0  | 1  | 2  | 3  | 4  | 5  | 6
+*/
+void IndexPage::LoadAllIndices(Buffer &buffer, vector<DBIndex> &indices) {
+  size_t offset = 0;
+  for (size_t i = 0; i < header.recordInfoArray.size(); i++) {
+    if (i % 2 == 1) {
+      buffer.PreserveBufferPos([this, &buffer, &indices, i]() {
+        buffer.pos = header.recordInfoArray.at(i).location;
+        DBIndex index = ReadIndex(buffer);
+        indices.push_back(index);
+      });
+      offset++;
+    }
+  }
+}
+
+void IndexPage::LoadAllPointers(Buffer &buffer, vector<u16> &pointers) {
+  size_t offset = 0;
+  for (size_t i = 0; i < header.recordInfoArray.size(); i++) {
+    if (i % 2 == 0) {
+      buffer.PreserveBufferPos([this, &buffer, &pointers, i]() {
+        buffer.pos = header.recordInfoArray.at(i).location;
+        pointers.push_back(buffer.ReadU16());
+      });
+      offset++;
+    }
+  }
+}
+
+DBIndex IndexPage::ReadIndex(Buffer &buffer) {
+  DBRow row = buffer.ReadRecord(columns);
+  vector<DBIndex::Key> keys;
+  keys.reserve(row.values.size());
+  for (DBRow::Value item : row.values) {
+    if (holds_alternative<i64>(item)) {
+      keys.push_back(std::get<i64>(item));
+    } else if (holds_alternative<string>(item)) {
+      keys.push_back(std::get<string>(item));
+    } else {
+      throw DBException("index key can only be integer or string");
+    }
+  }
+  return DBIndex(keys);
+}
+
+void IndexPage::Store(BPlusTreeNode *node) {
+  header.numOfEntries = node->size + (node->size + 1);
+  if (node->isLeaf) {
+    header.pageType = PageType::B_PLUS_TREE_LEAF;
+  } else {
+    header.pageType = PageType::B_PLUS_TREE_NON_LEAF;
+  }
+  header.recordInfoArray.clear();
+  size_t curPos = node->sharedData.pageSize;
+  for (size_t i = 0; i < header.numOfEntries; i++) {
+    if (i % 2 == 0) {
+      curPos = curPos - sizeof(u16);
+      header.recordInfoArray.emplace_back(curPos, sizeof(u16));
+    } else {
+      curPos = curPos - node->indices.at(i / 2).ComputeSize();
+      header.recordInfoArray.emplace_back(
+          curPos, node->indices.at(i / 2).ComputeSize());
+    }
+  }
+  header.endOfFreeSpace = curPos;
+  node->sharedData.buffer.Clear();
+  node->sharedData.buffer.SaveHeader(header);
+  node->sharedData.bufferManager.SaveBuffer(node->pageID,
+                                            node->sharedData.buffer);
+  for (size_t i = 0; i < header.recordInfoArray.size(); i++) {
+    if (i % 2 == 0) {
+      /* pointer */
+      node->sharedData.buffer.pos = header.recordInfoArray.at(i).location;
+      node->sharedData.buffer.WriteU16(node->pointers.at(i / 2));
+    } else {
+      /* index */
+      node->sharedData.buffer.pos = header.recordInfoArray.at(i).location;
+      const DBIndex &index = node->indices.at(i / 2);
+      for (const auto &key : index.keys) {
+        if (holds_alternative<i64>(key)) {
+          node->sharedData.buffer.WriteI64(std::get<i64>(key));
+        } else if (holds_alternative<string>(key)) {
+          const string &text = std::get<string>(key);
+          node->sharedData.buffer.WriteU16(text.size());
+          node->sharedData.buffer.WriteText(text);
+        } else {
+          throw DBException("index key type error");
+        }
+      }
+    }
+  }
+  node->sharedData.bufferManager.SaveBuffer(node->pageID,
+                                            node->sharedData.buffer);
+}
+
+BPlusTreeSharedData::BPlusTreeSharedData(int order,
+                                         BufferManager &bufferManager,
+                                         size_t pageSize,
+                                         const vector<DBColumn> &columns)
+    : order{order},
+      bufferManager{bufferManager},
+      pageSize{pageSize},
+      buffer(pageSize),
+      columns{columns} {}
+
+/* create an empty B+ tree node page */
+BPlusTreeNode::BPlusTreeNode(BPlusTreeSharedData &sharedData)
+    : sharedData{sharedData},
+      pageID{sharedData.bufferManager.AllocatePage()},
+      isLeaf{false},
+      size{0},
+      indices(sharedData.order),
+      pointers(sharedData.order + 1) {
+  sharedData.buffer.Clear();
+  sharedData.buffer.SaveHeader(EmptyIndexPageHeader(
+      sharedData.pageSize, PageType::B_PLUS_TREE_NON_LEAF));
+  sharedData.bufferManager.SaveBuffer(pageID, sharedData.buffer);
+}
 
 /* An example of a B+ tree node:
 P1 | K1 | P2 | K2 | P3 | K3 | P4
 */
-
-BPlusTreeNode::BPlusTreeNode(u16 pageID) : pageID{pageID} {}
-BPlusTreeNode::BPlusTreeNode(const BPlusTreeNode &other)
-    : pageID{other.pageID} {}
-
-bool BPlusTreeNode::IsLeaf(const Page &page) const {
-  return page.header.pageType == PageType::B_PLUS_TREE_LEAF;
+BPlusTreeNode::BPlusTreeNode(BPlusTreeSharedData &sharedData, u16 pageID)
+    : sharedData{sharedData},
+      pageID{pageID},
+      isLeaf{false},
+      size{0},
+      indices(sharedData.order),
+      pointers(sharedData.order + 1) {
+  sharedData.bufferManager.LoadBuffer(pageID, sharedData.buffer);
+  IndexPage indexPage(sharedData.columns, sharedData.buffer,
+                      sharedData.pageSize);
+  this->isLeaf = indexPage.header.pageType == PageType::B_PLUS_TREE_LEAF;
+  this->size = indexPage.header.numOfEntries / 2;
+  indexPage.LoadAllIndices(sharedData.buffer, indices);
+  indexPage.LoadAllPointers(sharedData.buffer, pointers);
 }
 
-size_t BPlusTreeNode::Size(const Page &page) const {
-  size_t nRows = page.NumOfRows();
-  if (nRows == 0) {
-    return 0;
-  } else {
-    return nRows - 1;
-  }
+BPlusTreeNode::~BPlusTreeNode() {
+  IndexPage indexPage(sharedData.columns, sharedData.buffer,
+                      sharedData.pageSize);
+  indexPage.Store(this);
 }
 
-BPlusTreeNode BPlusTreeNode::operator=(const BPlusTreeNode &other) {
-  return other;
-}
-
-BPlusTree::BPlusTree(size_t order, BufferManager &bufferManager,
-                     optional<u16> rootPageID, size_t pageSize,
+BPlusTree::BPlusTree(int order, BufferManager &bufferManager, size_t pageSize,
                      const vector<DBColumn> &columns)
-    : order{order}, bufferManager{bufferManager},
-      rootPageID{rootPageID}, pageSize{pageSize},
-      buffer(pageSize), columns{columns} {}
+    : root(), sharedData(order, bufferManager, pageSize, columns) {}
 
-void BPlusTree::Insert(DBIndex indexToInsert, i64 dataPointerVal) {
-  if (rootPageID.has_value()) {
-    bufferManager.LoadBuffer(rootPageID.value(), buffer);
-    Page page(columns, buffer, pageSize);
+void BPlusTree::Insert(const DBIndex &indexToInsert) {
+  int order = sharedData.order;
 
-    for (size_t i = 0; i < page.NumOfRows(); i++) {
-      DBRow row = page.GetRow(buffer, i);   // get current row
-      DBIndex index = GetIndexFromRow(row); // get current index
-      // if the index to insert is less than the current index
-      if (CompareIndex(indexToInsert, index) < 0) {
-        // found the position for the new key-value pair
-        if (page.NumOfRows() >= order) {
-          // split the current node
+  /* if there is no root node, create a new root node */
+  if (bool(root) == false) {
+    root = make_shared<BPlusTreeNode>(sharedData,
+                                      sharedData.bufferManager.AllocatePage());
+    root->indices.at(0) = indexToInsert;
+    root->isLeaf = true;
+    root->size = 1;
+  } else {
+    /* traverse the B+ tree */
+
+    BPlusTreeNode::Ptr cursor = root;
+    BPlusTreeNode::Ptr parent;
+
+    /* keep traversing till the cursor reaches a leaf node */
+    while (cursor->isLeaf == false) {
+      parent = cursor;
+      for (int i = 0; i < cursor->size; i++) {
+        if (indexToInsert < cursor->indices.at(i)) {
+          /* found the position to insert node */
+          cursor =
+              make_shared<BPlusTreeNode>(sharedData, cursor->pointers.at(i));
+          break;
+        } else if (i == cursor->size - 1) {
+          cursor =
+              make_shared<BPlusTreeNode>(sharedData, cursor->pointers.at(i));
+          break;
         } else {
-          // insert the new key-value pair in the current page
-          page.InsertRow(buffer,
-                         ConvertIndexToRow(indexToInsert, dataPointerVal), i);
-          page.UpdateHeader(buffer);
-          return; // complete insertion
+          /* pass */
         }
       }
     }
-    // the index should be placed at the rightmost position
-    if (page.NumOfRows() >= order) {
-      // split the current node
+    if (cursor->size < order) {
+      int i = 0;
+      while (i < cursor->size && indexToInsert > cursor->indices.at(i)) {
+        i++;
+      }
+      for (int j = cursor->size; j > i; j--) {
+        cursor->indices.at(j) = cursor->indices.at(j - 1);
+      }
+      cursor->indices.at(i) = indexToInsert;
+      cursor->size++;
+      cursor->pointers.at(cursor->size) = cursor->pointers.at(cursor->size - 1);
+      cursor->pointers.at(cursor->size - 1) = 0;
     } else {
-      // note that the rows in the buffer are in reversed order
-      page.AddRow(buffer, ConvertIndexToRow(indexToInsert, dataPointerVal));
-      page.UpdateHeader(buffer);
+      /* create a new leaf node */
+      BPlusTreeNode::Ptr newLeaf = make_shared<BPlusTreeNode>(
+          sharedData, sharedData.bufferManager.AllocatePage()); // TO DO: distinguish new page and existing page
+      vector<DBIndex> virtualIndices(order + 1);
+
+      for (int k = 0; k < order; k++) {
+        virtualIndices.at(k) = cursor->indices.at(k);
+      }
+
+      int i = 0;
+
+      /* find where to insert the new node */
+      while (i < order && indexToInsert > virtualIndices.at(i)) {
+        i++;
+      }
+
+      /* move indices */
+      for (int k = order; k > i; k--) {
+        virtualIndices.at(k) = virtualIndices.at(k - 1);
+      }
+
+      virtualIndices.at(i) = indexToInsert;
+      newLeaf->isLeaf = true;
+      cursor->size = (order + 1) / 2;
+      newLeaf->size = order + 1 - (order + 1) / 2;
+      cursor->pointers.at(cursor->size) = newLeaf->pageID;
+      newLeaf->pointers.at(newLeaf->size) = cursor->pointers.at(order);
+      cursor->pointers.at(order) = 0;
+
+      /* copy the first half of indices */
+      for (int i = 0; i < cursor->size; i++) {
+        cursor->indices.at(i) = virtualIndices.at(i);
+      }
+
+      /* update the new leaf indices to the virtual indices */
+      for (int i = 0, j = cursor->size; i < newLeaf->size; i++, j++) {
+        newLeaf->indices.at(i) = virtualIndices.at(j);
+      }
+
+      if (cursor->pageID == root->pageID) {
+        BPlusTreeNode::Ptr newRoot = make_shared<BPlusTreeNode>(
+            sharedData, sharedData.bufferManager.AllocatePage());
+        newRoot->indices.at(0) = newLeaf->indices.at(0);
+        newRoot->pointers.at(0) = cursor->pageID;
+        newRoot->pointers.at(1) = newLeaf->pageID;
+        newRoot->isLeaf = false;
+        newRoot->size = 1;
+        root = newRoot;
+      } else {
+        InsertInternal(newLeaf->indices.at(0), parent, newLeaf);
+      }
     }
   }
 }
 
-void BPlusTree::InsertInternal(DBIndex indexToInsert, BPlusTreeNode cursor,
-                               BPlusTreeNode child) {
-  Page page = LoadPage(cursor.pageID);
-  // if we don't have overflow
-  if (cursor.Size(page) < order) {
-    size_t i = 0;
-    // traverse the child node for the current cursor node
-    DBRow keyValuePair;
-    int comparisonResult;
-    for (keyValuePair = page.GetRow(buffer, i),
-        comparisonResult =
-             CompareIndex(indexToInsert, GetIndexFromRow(keyValuePair));
-         comparisonResult > 0 && i < cursor.Size(page); i++)
-      ;
-    page.InsertRow(
-        buffer,
-        ConvertIndexToRow(indexToInsert, static_cast<i64>(child.pageID)), i);
-    SavePage(page, cursor.pageID);
-  } else {
-    // split the node
-    vector<DBIndex> virtualKeys;
-    vector<i64> virtualPointers;
-    LoadKeyValuePairs(page, virtualKeys, virtualPointers);
-
-    size_t i = 0;
-    size_t j;
-    size_t cursorSize = cursor.Size(page);
-    while (CompareIndex(indexToInsert, virtualKeys.at(i)) > 0 && i < order) {
+void BPlusTree::InsertInternal(const DBIndex &indexToInsert,
+                               BPlusTreeNode::Ptr cursor,
+                               BPlusTreeNode::Ptr child) {
+  int order = sharedData.order;
+  if (cursor->size < order) {
+    /* if there isn't an overflow */
+    int i = 0;
+    /* search the position to insert the current index */
+    while (i < cursor->size && indexToInsert > cursor->indices.at(i)) {
       i++;
     }
-    for (int k = static_cast<int>(order); k > static_cast<int>(i); k--) {
-      virtualKeys.at(static_cast<size_t>(k)) =
-          virtualKeys.at(static_cast<size_t>(k - 1));
+    /* first part | position to insert | second part */
+    /* move the second part forward one slot to make room for the new index */
+    for (int j = cursor->size; j > i; j--) {
+      cursor->indices.at(j) = cursor->indices.at(j - 1);
     }
-    virtualKeys.at(i) = indexToInsert;
+    /* move the pointers too */
+    for (int j = cursor->size + 1; j > i + 1; j--) {
+      cursor->pointers.at(j) = cursor->pointers.at(j - 1);
+    }
+    /* insert the index */
+    cursor->indices.at(i) = indexToInsert;
+    /* insert the pointer */
+    cursor->pointers.at(i + 1) = child->pageID;
+    /* increase the count of nodes */
+    cursor->size++;
+  } else {
+    /* if there is an overflow, split the node */
+    /* create a new internal node */
+    BPlusTreeNode::Ptr newInternal = make_shared<BPlusTreeNode>(
+        sharedData, sharedData.bufferManager.AllocatePage());
+    /* create virtual indices */
+    vector<DBIndex> virtualIndices(order + 1);
+    /* create virtual pointers */
+    vector<u16> virtualPointers(order + 2);
+    /* copy all the indices from the cursor to the virtual indices */
+    for (int k = 0; k < order; k++) {
+      virtualIndices.at(k) = cursor->indices.at(k);
+    }
+    /* copy all the pointers too */
+    for (int k = 0; k < order + 1; k++) {
+      virtualPointers.at(k) = cursor->pointers.at(k);
+    }
 
-    for (int k = static_cast<int>(order) + 1; k > static_cast<int>(i) + 1;
-         k--) {
-      virtualPointers.at(static_cast<size_t>(k)) =
-          virtualPointers.at(static_cast<size_t>(k - 1));
+    int i = 0;
+    /* search the position to insert the current index */
+    while (i < order && indexToInsert > virtualIndices.at(i)) {
+      i++;
     }
-    virtualPointers.at(i + 1) = child.pageID;
+    /* first part | position to insert | second part */
+    /* move the second part forward one slot to make room for the new index */
+    for (int k = order; k > i; k--) {
+      virtualIndices.at(k) = virtualIndices.at(k - 1);
+    }
+    /* move the pointers too */
+    for (int k = order + 1; k > i + 1; k--) {
+      virtualPointers.at(k) = virtualPointers.at(k - 1);
+    }
+    /* insert the index */
+    virtualIndices.at(i) = indexToInsert;
+    /* insert the pointer */
+    virtualPointers.at(i + 1) = child->pageID;
 
-    u16 newInternalPageID = CreateNewNode(PageType::B_PLUS_TREE_INTERIOR);
-    page = LoadPage(newInternalPageID);
-    size_t newInternalNodeSize = order - (order + 1) / 2;
-    vector<DBIndex> newInternalNodeKeys(newInternalNodeSize);
-    vector<i64> newNodePointers(newInternalNodeSize);
-    DBIndex cursorLastIndex =
-        GetIndexFromRow(page.GetRow(buffer, newInternalNodeSize));
-
-    for (i = 0, j = cursorSize + 1; i < newInternalNodeSize; i++, j++) {
-      newInternalNodeKeys.at(i) = virtualKeys.at(j);
+    newInternal->isLeaf = false;
+    cursor->size = (order + 1) / 2;
+    newInternal->size = order - (order + 1) / 2;
+    /* insert a new node as an internal node */
+    for (int i = 0, j = cursor->size + 1; i < newInternal->size; i++, j++) {
+      newInternal->indices.at(i) = virtualIndices.at(j);
     }
-    for (i = 0, j = cursorSize + 1; i < newInternalNodeSize + 1; i++, j++) {
-      newNodePointers.at(i) = virtualPointers.at(j);
+    for (int i = 0, j = cursor->size + 1; i < newInternal->size + 1; i++, j++) {
+      newInternal->pointers.at(i) = virtualPointers.at(j);
     }
-    if (cursor.pageID == rootPageID) {
-      u16 newRootPageID = CreateNewNode(PageType::B_PLUS_TREE_ROOT);
-      page = LoadPage(newRootPageID);
-      vector<DBRow> rows{
-          ConvertIndexToRow(cursorLastIndex, static_cast<i64>(cursor.pageID)),
-          DBRow({static_cast<i64>(newInternalPageID)})};
+    /* if the cursor is the root node */
+    if (cursor->pageID == root->pageID) {
+      BPlusTreeNode::Ptr newRoot = make_shared<BPlusTreeNode>(
+          sharedData, sharedData.bufferManager.AllocatePage());
+      newRoot->indices.at(0) = cursor->indices.at(cursor->size);
+      newRoot->pointers.at(0) = cursor->pageID;
+      newRoot->pointers.at(1) = newInternal->pageID;
+      newRoot->isLeaf = false;
+      newRoot->size = 1;
+      root = newRoot;
+    } else {
+      InsertInternal(cursor->indices.at(cursor->size), FindParent(root, cursor),
+                     newInternal);
     }
   }
 }
 
-optional<i64> BPlusTree::Search(DBIndex indexToSearch) {
-  /* Assumes no duplicate keys, and returns the record pointer that points to
-   * record with the search key, if such a key exists. */
-  if (rootPageID.has_value()) {
-    // set the cursor as the root node
-    BPlusTreeNode cursor(rootPageID.value());
-    Page page = LoadPage(cursor.pageID);
-    // while the cursor is not a leaf node, keep searching till we find a leaf
-    // node
-    while (cursor.IsLeaf(page) == false) {
-      // iterate through all the key-value pairs in the B+ tree node
-      for (size_t i = 0; i < cursor.Size(page); i++) {
-        // make sure the buffer is for the current page
-        DBRow keyValuePair = page.GetRow(buffer, i);
-        int comparisonResult =
-            CompareIndex(indexToSearch, GetIndexFromRow(keyValuePair));
-        // if search key < current key
-        if (comparisonResult < 0) {
-          i64 pointer = GetPointerValueFromRow(keyValuePair);
-          cursor = BPlusTreeNode(static_cast<u16>(pointer));
-          page = LoadPage(cursor.pageID);
-          break;
-        }
-        // if the program reaches the end of the key-value pairs
-        if (i + 1 == cursor.Size(page)) {
-          // follow the last pointer and load the page it points
-          DBRow valueRow = page.GetRow(buffer, i + 1);
-          i64 pointer = GetPointerValueFromRow(valueRow);
-          cursor = BPlusTreeNode(static_cast<u16>(pointer));
-          page = LoadPage(cursor.pageID);
-          break;
-        }
-      }
-    }
-
-    // traverse the cursor and find the node with value x
-    for (size_t i = 0; i < cursor.Size(page); i++) {
-      DBRow keyValuePair = page.GetRow(buffer, i);
-      int comparisonResult =
-          CompareIndex(indexToSearch, GetIndexFromRow(keyValuePair));
-      // if the search key is found then return the pointer
-      if (comparisonResult == 0) {
-        return make_optional(GetPointerValueFromRow(keyValuePair));
-      }
-    }
-    // the search key is not in the tree
+BPlusTreeNode::Ptr BPlusTree::FindParent(BPlusTreeNode::Ptr cursor,
+                                         BPlusTreeNode::Ptr child) {
+  BPlusTreeNode::Ptr parent;
+  /* if the cursor reaches the end of the tree */
+  if (cursor->isLeaf ||
+      make_shared<BPlusTreeNode>(sharedData, cursor->pointers.at(0))->isLeaf) {
     return {};
   } else {
-    // the tree is empty
-    return {};
-  }
-}
-
-optional<BPlusTreeNode> BPlusTree::FindParent(BPlusTreeNode cursor,
-                                              BPlusTreeNode child) {
-  Page page = LoadPage(cursor.pageID);
-  // if the cursor reaches the end of the tree
-  if (cursor.IsLeaf(page)) {
-    return {};
-  } else {
-    DBRow keyValuePair = page.GetRow(buffer, 0);
-    i64 pointer = GetPointerValueFromRow(keyValuePair);
-    BPlusTreeNode cursorChild = BPlusTreeNode(static_cast<u16>(pointer));
-    page = LoadPage(cursorChild.pageID);
-    if (cursorChild.IsLeaf(page)) {
-      return {};
-    } else {
-      page = LoadPage(cursor.pageID);
-    }
-  }
-  // traverse the current node wtih every child of it
-  for (size_t i = 0; i < cursor.Size(page) + 1; i++) {
-    // update the parent for the child node
-    DBRow keyValuePair = page.GetRow(buffer, i);
-    i64 pointer = GetPointerValueFromRow(keyValuePair);
-    if (static_cast<u16>(pointer) == child.pageID) {
-      return make_optional(cursor);
-    } else {
-      // otherwise, recursively traverse to find the child node
-      cursor = BPlusTreeNode(static_cast<u16>(pointer));
-      optional<BPlusTreeNode> parent = FindParent(cursor, child);
-      // if the parent is found, then return the parent node
-      if (parent) {
+    for (int i = 0; i < cursor->size + 1; i++) {
+      auto ithPointer =
+          make_shared<BPlusTreeNode>(sharedData, cursor->pointers.at(i));
+      if (ithPointer->pageID == child->pageID) {
+        /* if found child node */
+        parent = cursor;
         return parent;
-      }
-    }
-  }
-  // the parent is not found
-  return {};
-}
-
-u16 BPlusTree::CreateNewNode(PageType pageType) {
-  u16 pageID = bufferManager.AllocatePage();
-  bufferManager.LoadBuffer(pageID, buffer);
-  auto newNodeHeader =
-      PageHeader(pageType, 0, static_cast<u16>(pageSize - 1), {});
-  buffer.PreserveBufferPos(
-      [this, &newNodeHeader]() { buffer.SaveHeader(newNodeHeader); });
-  return pageID;
-}
-
-Page BPlusTree::LoadPage(size_t pageID) {
-  bufferManager.LoadBuffer(pageID, buffer);
-  return Page(columns, buffer, pageSize);
-}
-
-void BPlusTree::SavePage(Page &page, size_t pageID) {
-  page.UpdateHeader(buffer);
-  bufferManager.SaveBuffer(pageID, buffer);
-}
-
-void BPlusTree::LoadKeyValuePairs(Page &page, vector<DBIndex> &keys,
-                                  vector<i64> &pointers) {
-  keys.reserve(page.NumOfRows() / 2);
-  pointers.reserve((page.NumOfRows() / 2) + 1);
-  for (size_t i = 0; i < page.NumOfRows(); i++) {
-    DBRow row = page.GetRow(buffer, i);
-    if (i % 2 == 0) {
-      pointers.push_back(GetPointerValueFromRow(row));
-    } else {
-      keys.push_back(GetIndexFromRow(row));
-    }
-  }
-}
-
-void BPlusTree::SaveKeyValuePairs(Page &page, const vector<DBIndex> &keys,
-                                  const vector<i64> &pointers) {
-  for (size_t i = 0; i < keys.size(); i++) {
-    page.AddRow(buffer, ConvertIndexToRow(keys.at(i), pointers.at(i)));
-  }
-}
-
-DBIndex BPlusTree::GetIndexFromRow(const DBRow &row) {
-  if (row.values.size() <= 1) {
-    throw DBException("wrong number of items in a row for index");
-  } else {
-    vector<DBIndex::Key> keys(row.values.size() - 1);
-    for (size_t i = 1; i < row.values.size(); i++) {
-      if (holds_alternative<i64>(row.values[i])) {
-        keys[i - 1] = std::get<i64>(row.values[i]);
-      } else if (holds_alternative<string>(row.values[i])) {
-        keys[i - 1] = std::get<string>(row.values[i]);
       } else {
-        throw DBException("wrong type for index");
+        parent = FindParent(ithPointer, child);
+        if (parent) {
+          return parent;
+        }
       }
     }
-    return DBIndex(keys);
-  }
-}
-
-DBRow BPlusTree::ConvertIndexToRow(const DBIndex &index, i64 dataPointerVal) {
-  vector<DBRow::Value> values(index.keys.size() + 1);
-  values[0] = dataPointerVal;
-  for (size_t i = 0; i < index.keys.size(); i++) {
-    if (holds_alternative<i64>(index.keys[i])) {
-      values[i + 1] = std::get<i64>(index.keys[i]);
-    } else {
-      values[i + 1] = std::get<string>(index.keys[i]);
-    }
-  }
-  return DBRow(values);
-}
-
-i64 BPlusTree::GetPointerValueFromRow(const DBRow &row) {
-  if (row.values.size() <= 1) {
-    throw DBException("wrong number of items in a row for index");
-  } else {
-    if (holds_alternative<i64>(row.values.back())) {
-      return std::get<i64>(row.values.back());
-    } else {
-      throw DBException("wrong pointer value format");
-    }
+    return parent;
   }
 }

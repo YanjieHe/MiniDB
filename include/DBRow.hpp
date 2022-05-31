@@ -1,11 +1,10 @@
 #ifndef DBROW_HPP
 #define DBROW_HPP
-#include "Header.hpp"
-#include <nlohmann/json.hpp>
 #include <string>
 #include <variant>
 
-using nlohmann::json;
+#include "Header.hpp"
+
 using std::monostate;
 using std::string;
 using std::variant;
@@ -15,7 +14,7 @@ class Blob {
 };
 
 class DBRow {
-public:
+ public:
   typedef variant<monostate, i64, f64, string, Blob> Value;
 
   vector<Value> values;
@@ -24,6 +23,4 @@ public:
   explicit DBRow(const vector<Value> &values) : values{values} {}
 };
 
-json DBRowToJson(const DBRow &record);
-
-#endif // DBROW_HPP
+#endif  // DBROW_HPP

@@ -1,16 +1,18 @@
 #ifndef DB_INDEX_HPP
 #define DB_INDEX_HPP
-#include "Buffer.hpp"
-#include "BufferManager.hpp"
-#include "DBColumn.hpp"
 #include <memory>
 #include <optional>
 
+#include "Buffer.hpp"
+#include "BufferManager.hpp"
+#include "DBColumn.hpp"
+#include "DBException.hpp"
+
+using std::holds_alternative;
 using std::variant;
 
-class DataPointer
-{
-public:
+class DataPointer {
+ public:
   u16 bufferID;
   u16 posIndex;
 
@@ -18,41 +20,25 @@ public:
 
   DataPointer(u16 bufferID, u16 posIndex)
       : bufferID{bufferID}, posIndex{posIndex} {}
+  explicit DataPointer(i64 composedValue)
+      : bufferID{static_cast<u16>(composedValue / 65536)},
+        posIndex{static_cast<u16>(composedValue % 65536)} {}
 };
 
-class DBIndex
-{
-public:
+class DBIndex {
+ public:
   typedef variant<i64, string> Key;
 
   vector<Key> keys;
 
   DBIndex() = default;
   explicit DBIndex(vector<Key> keys) : keys{keys} {}
+  size_t ComputeSize() const;
 };
 
-template <typename T>
-int GetComparisonIntResult(const T &x, const T &y);
+bool operator<(const DBIndex &left, const DBIndex &right);
+bool operator>(const DBIndex &left, const DBIndex &right);
+bool operator==(const DBIndex &left, const DBIndex &right);
+bool operator!=(const DBIndex &left, const DBIndex &right);
 
-int CompareIndexKey(const DBIndex::Key &x, const DBIndex::Key &y);
-int CompareIndex(const DBIndex &x, const DBIndex &y);
-
-/************ Template Function Implementation ************/
-template <typename T>
-int GetComparisonIntResult(const T &x, const T &y)
-{
-  if (x < y)
-  {
-    return -1;
-  }
-  else if (x > y)
-  {
-    return 1;
-  }
-  else
-  {
-    return 0;
-  }
-}
-
-#endif // DB_INDEX_HPP
+#endif  // DB_INDEX_HPP

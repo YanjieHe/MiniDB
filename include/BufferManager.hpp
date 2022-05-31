@@ -3,11 +3,11 @@
 #include "Buffer.hpp"
 
 class BufferManager {
-public:
+ public:
   string path;
   DatabaseHeader header;
 
-  explicit BufferManager(string path);
+  BufferManager(string path, DatabaseHeader header);
 
   void LoadBuffer(u16 bufferID, Buffer &buffer);
   void SaveBuffer(u16 bufferID, Buffer &buffer);
@@ -15,6 +15,6 @@ public:
   size_t PageStart(u16 bufferID) const;
 };
 
-void CreateEmptyDatabaseFile(string path, const DatabaseHeader& header);
+void CreateEmptyDatabaseFile(string path, const DatabaseHeader &header);
 
-#endif // BUFFER_MANAGER_HPP
+#endif  // BUFFER_MANAGER_HPP

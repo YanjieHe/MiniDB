@@ -1,11 +1,13 @@
 #ifndef BUFFER_HPP
 #define BUFFER_HPP
-#include "DBColumn.hpp"
-#include "DBRow.hpp"
 #include <functional>
 
+#include "DBColumn.hpp"
+#include "DBRow.hpp"
+
+
 class Buffer {
-public:
+ public:
   vector<u8> bytes;
   size_t pos;
 
@@ -37,6 +39,7 @@ public:
   void ResetPosition() { pos = 0; }
   void MoveBlock(size_t srcStart, size_t size, size_t destStart);
   void PreserveBufferPos(std::function<void()> action);
+  void Clear();
 };
 
-#endif // BUFFER_HPP
+#endif  // BUFFER_HPP

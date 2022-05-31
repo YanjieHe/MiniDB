@@ -3,7 +3,7 @@
 #include "Buffer.hpp"
 
 class Page {
-public:
+ public:
   PageHeader header;
   vector<DBColumn> columns;
 
@@ -21,4 +21,4 @@ public:
   bool IsLeaf() const { return header.pageType == PageType::B_PLUS_TREE_LEAF; }
 };
 
-#endif // MINIDB_PAGE_HPP
+#endif  // MINIDB_PAGE_HPP

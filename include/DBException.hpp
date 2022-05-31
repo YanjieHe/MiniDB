@@ -6,11 +6,11 @@
 using std::string;
 
 class DBException : public std::exception {
-public:
+ public:
   string message;
   explicit DBException(string message) : message{message} {}
 
   const char *what() const throw() override { return message.c_str(); }
 };
 
-#endif // DBEXCEPTION_HPP
+#endif  // DBEXCEPTION_HPP

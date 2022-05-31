@@ -1,8 +1,7 @@
 #ifndef HEADER_HPP
+#include <cmath>
 #include <cstdint>
 #include <vector>
-#include <cmath>
-#include <nlohmann/json.hpp>
 
 using i32 = int32_t;
 using i64 = int64_t;
@@ -14,10 +13,9 @@ using f32 = float_t;
 using f64 = double_t;
 
 using std::vector;
-using nlohmann::json;
 
 class DBRowInfo {
-public:
+ public:
   u16 location;
   u16 size;
   DBRowInfo() = default;
@@ -26,13 +24,12 @@ public:
 
 enum class PageType {
   B_PLUS_TREE_LEAF = 0,
-  B_PLUS_TREE_INTERIOR = 1,
-  B_PLUS_TREE_ROOT = 2,
-  TABLE = 3
+  B_PLUS_TREE_NON_LEAF = 1,
+  TABLE = 2
 };
 
 class PageHeader {
-public:
+ public:
   PageType pageType;
   u16 numOfEntries;
   u16 endOfFreeSpace;
@@ -40,20 +37,23 @@ public:
 
   PageHeader(PageType pageType, u16 numOfEntries, u16 endOfFreeSpace,
              const vector<DBRowInfo> &recordInfoArray)
-      : pageType{pageType}, numOfEntries{numOfEntries},
-        endOfFreeSpace{endOfFreeSpace}, recordInfoArray{recordInfoArray} {}
+      : pageType{pageType},
+        numOfEntries{numOfEntries},
+        endOfFreeSpace{endOfFreeSpace},
+        recordInfoArray{recordInfoArray} {}
   size_t ByteSize() const {
     return sizeof(u8) + sizeof(u16) * 2 + sizeof(u16) * 2 * numOfEntries;
   }
 };
 
 class DatabaseHeader {
-public:
+ public:
   i64 pageSize;
+  u16 nPages;
 
-  size_t ByteSize() const { return sizeof(pageSize); }
+  size_t ByteSize() const { return sizeof(pageSize) + sizeof(nPages); }
 };
 
 PageHeader EmptyTablePageHeader(size_t pageSize);
-json PageHeaderToJson(const PageHeader &header);
-#endif // HEADER_HPP
+PageHeader EmptyIndexPageHeader(size_t pageSize, PageType pageType);
+#endif  // HEADER_HPP

@@ -1,7 +1,9 @@
 #include "Buffer.hpp"
-#include "DBException.hpp"
+
 #include <bit_converter/bit_converter.hpp>
 #include <cstring>
+
+#include "DBException.hpp"
 
 using std::holds_alternative;
 
@@ -74,49 +76,49 @@ DBRow Buffer::ReadRecord(const vector<DBColumn> &columns) {
 
 void Buffer::ReadRecordFieldValue(DBRow &record, const DBColumn &col) {
   switch (col.type) {
-  case TypeTag::INTEGER: {
-    i64 i = ReadI64();
-    record.values.emplace_back(i);
-    break;
-  }
-  case TypeTag::REAL: {
-    f64 f = ReadF64();
-    record.values.emplace_back(f);
-    break;
-  }
-  case TypeTag::TEXT: {
-    u16 size = ReadU16();
-    string s(bytes.begin() + pos, bytes.begin() + pos + size);
-    pos = pos + size;
-    record.values.emplace_back(s);
-    break;
-  }
-  default: {
-    throw DBException("BLOB type is not supported yet");
-  }
+    case TypeTag::INTEGER: {
+      i64 i = ReadI64();
+      record.values.emplace_back(i);
+      break;
+    }
+    case TypeTag::REAL: {
+      f64 f = ReadF64();
+      record.values.emplace_back(f);
+      break;
+    }
+    case TypeTag::TEXT: {
+      u16 size = ReadU16();
+      string s(bytes.begin() + pos, bytes.begin() + pos + size);
+      pos = pos + size;
+      record.values.emplace_back(s);
+      break;
+    }
+    default: {
+      throw DBException("BLOB type is not supported yet");
+    }
   }
 }
 
 void Buffer::WriteRecord(const vector<DBColumn> &columns, const DBRow &record) {
   auto WriteValue = [this, &columns, &record](int i) {
     switch (columns.at(i).type) {
-    case TypeTag::INTEGER: {
-      WriteI64(std::get<i64>(record.values.at(i)));
-      break;
-    }
-    case TypeTag::REAL: {
-      WriteF64(std::get<f64>(record.values.at(i)));
-      break;
-    }
-    case TypeTag::TEXT: {
-      auto text = std::get<string>(record.values.at(i));
-      WriteU16(static_cast<u16>(text.size()));
-      WriteText(text);
-      break;
-    }
-    default: {
-      throw DBException("BLOB type is not supported yet");
-    }
+      case TypeTag::INTEGER: {
+        WriteI64(std::get<i64>(record.values.at(i)));
+        break;
+      }
+      case TypeTag::REAL: {
+        WriteF64(std::get<f64>(record.values.at(i)));
+        break;
+      }
+      case TypeTag::TEXT: {
+        auto text = std::get<string>(record.values.at(i));
+        WriteU16(static_cast<u16>(text.size()));
+        WriteText(text);
+        break;
+      }
+      default: {
+        throw DBException("BLOB type is not supported yet");
+      }
     }
   };
   for (size_t i = 0; i < columns.size(); i++) {
@@ -165,4 +167,11 @@ void Buffer::PreserveBufferPos(std::function<void()> action) {
   auto currentPos = pos;
   action();
   pos = currentPos;
+}
+
+void Buffer::Clear() {
+  pos = 0;
+  for (auto &b : bytes) {
+    b = 0;
+  }
 }

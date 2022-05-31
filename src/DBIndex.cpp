@@ -1,34 +1,154 @@
 #include "DBIndex.hpp"
+
 #include "DBException.hpp"
 
 using std::holds_alternative;
 
-int CompareIndexKey(const DBIndex::Key &x, const DBIndex::Key &y) {
-  if (holds_alternative<i64>(x) && holds_alternative<i64>(y)) {
-    return GetComparisonIntResult(std::get<i64>(x), std::get<i64>(y));
-  } else if (holds_alternative<string>(x) && holds_alternative<string>(y)) {
-    return GetComparisonIntResult(std::get<string>(x), std::get<string>(y));
+size_t DBIndex::ComputeSize() const {
+  size_t totalSize = 0;
+  for (auto &key : keys) {
+    if (holds_alternative<i64>(key)) {
+      totalSize += sizeof(i64);
+    } else if (holds_alternative<string>(key)) {
+      totalSize += sizeof(u16) + std::get<string>(key).size();
+    }
+  }
+  return totalSize;
+}
+
+bool operator<(const DBIndex &left, const DBIndex &right) {
+  if (left.keys.size() == right.keys.size()) {
+    for (size_t i = 0; i < left.keys.size(); i++) {
+      if (holds_alternative<i64>(left.keys[i]) &&
+          holds_alternative<i64>(right.keys[i])) {
+        i64 leftValue = std::get<i64>(left.keys[i]);
+        i64 rightValue = std::get<i64>(right.keys[i]);
+        if (leftValue < rightValue) {
+          return true;
+        } else if (leftValue > rightValue) {
+          return false;
+        } else {
+          /* continue comparing */
+        }
+      } else if (holds_alternative<string>(left.keys[i]) &&
+                 holds_alternative<string>(right.keys[i])) {
+        const string &leftValue = std::get<string>(left.keys[i]);
+        const string &rightValue = std::get<string>(right.keys[i]);
+        if (leftValue < rightValue) {
+          return true;
+        } else if (leftValue > rightValue) {
+          return false;
+        } else {
+          /* continue comparing */
+        }
+      } else {
+        throw DBException(
+            "the two index keys for comparision have two different types");
+      }
+    }
+    return false;
   } else {
     throw DBException(
         "the two index keys for comparision have two different types");
   }
 }
-
-int CompareIndex(const DBIndex &x, const DBIndex &y) {
-  if (x.keys.size() == y.keys.size()) {
-    for (size_t i = 0; i < x.keys.size(); i++) {
-      int result = CompareIndexKey(x.keys[i], y.keys[i]);
-      if (result < 0) {
-        return -1;
-      } else if (result > 0) {
-        return 1;
+bool operator>(const DBIndex &left, const DBIndex &right) {
+  if (left.keys.size() == right.keys.size()) {
+    for (size_t i = 0; i < left.keys.size(); i++) {
+      if (holds_alternative<i64>(left.keys[i]) &&
+          holds_alternative<i64>(right.keys[i])) {
+        i64 leftValue = std::get<i64>(left.keys[i]);
+        i64 rightValue = std::get<i64>(right.keys[i]);
+        if (leftValue < rightValue) {
+          return false;
+        } else if (leftValue > rightValue) {
+          return true;
+        } else {
+          /* continue comparing */
+        }
+      } else if (holds_alternative<string>(left.keys[i]) &&
+                 holds_alternative<string>(right.keys[i])) {
+        const string &leftValue = std::get<string>(left.keys[i]);
+        const string &rightValue = std::get<string>(right.keys[i]);
+        if (leftValue < rightValue) {
+          return false;
+        } else if (leftValue > rightValue) {
+          return true;
+        } else {
+          /* continue comparing */
+        }
       } else {
-        // pass
+        throw DBException(
+            "the two index keys for comparision have two different types");
       }
     }
-    return 0;
+    return false;
   } else {
     throw DBException(
-        "the two indices have different number of key components.");
+        "the two index keys for comparision have two different types");
+  }
+}
+bool operator==(const DBIndex &left, const DBIndex &right) {
+  if (left.keys.size() == right.keys.size()) {
+    for (size_t i = 0; i < left.keys.size(); i++) {
+      if (holds_alternative<i64>(left.keys[i]) &&
+          holds_alternative<i64>(right.keys[i])) {
+        i64 leftValue = std::get<i64>(left.keys[i]);
+        i64 rightValue = std::get<i64>(right.keys[i]);
+        if (leftValue != rightValue) {
+          return false;
+        } else {
+          /* continue comparing */
+        }
+      } else if (holds_alternative<string>(left.keys[i]) &&
+                 holds_alternative<string>(right.keys[i])) {
+        const string &leftValue = std::get<string>(left.keys[i]);
+        const string &rightValue = std::get<string>(right.keys[i]);
+        if (leftValue != rightValue) {
+          return false;
+        } else {
+          /* continue comparing */
+        }
+      } else {
+        throw DBException(
+            "the two index keys for comparision have two different types");
+      }
+    }
+    return true;
+  } else {
+    throw DBException(
+        "the two index keys for comparision have two different types");
+  }
+}
+bool operator!=(const DBIndex &left, const DBIndex &right) {
+  if (left.keys.size() == right.keys.size()) {
+    for (size_t i = 0; i < left.keys.size(); i++) {
+      if (holds_alternative<i64>(left.keys[i]) &&
+          holds_alternative<i64>(right.keys[i])) {
+        i64 leftValue = std::get<i64>(left.keys[i]);
+        i64 rightValue = std::get<i64>(right.keys[i]);
+        if (leftValue != rightValue) {
+          return true;
+        } else {
+          /* continue comparing */
+        }
+      } else if (holds_alternative<string>(left.keys[i]) &&
+                 holds_alternative<string>(right.keys[i])) {
+        const string &leftValue = std::get<string>(left.keys[i]);
+        const string &rightValue = std::get<string>(right.keys[i]);
+        if (leftValue != rightValue) {
+          return true;
+        } else {
+          /* continue comparing */
+        }
+      } else {
+        throw DBException(
+            "the two index keys for comparision have two different types");
+      }
+    }
+    return false;
+  } else {
+    throw DBException(
+        "the two index keys for comparision have two different types");
   }
 }

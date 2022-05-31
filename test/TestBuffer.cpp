@@ -1,5 +1,7 @@
 #include <catch2/catch.hpp>
+
 #include "Buffer.hpp"
+
 
 TEST_CASE("Test Buffer", "[Buffer]") {
   Buffer buf(8);
