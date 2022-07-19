@@ -1,5 +1,6 @@
 #include "BufferManager.hpp"
 
+#include <filesystem>
 #include <fstream>
 
 #include "DBException.hpp"
@@ -7,22 +8,29 @@
 using std::fstream;
 using std::ifstream;
 using std::ofstream;
+namespace fs = std::filesystem;
 
-BufferManager::BufferManager(string path, DatabaseHeader header)
-    : path{path}, header{header} {
-  ifstream stream(path, std::ios::binary);
-  if (stream) {
-    Buffer buffer(sizeof(i64));
-    header.pageSize = static_cast<size_t>(buffer.ReadI64());
-  } else {
-    throw DBException("Fail to load the database file: " + path);
-  }
+// #include <iostream>
+
+// using std::cout;
+// using std::endl;
+
+BufferManager::BufferManager(string directoryPath, DatabaseHeader header)
+    : directoryPath{directoryPath}, header{header} {
+  // ifstream stream(directoryPath, std::ios::binary);
+  // if (stream) {
+  //   Buffer buffer(sizeof(i64));
+  //   header.pageSize = static_cast<size_t>(buffer.ReadI64());
+  // } else {
+  //   throw DBException("Fail to load the database file: " + path);
+  // }
 }
 
 void BufferManager::LoadBuffer(u16 bufferID, Buffer &buffer) {
   if (bufferID < header.nPages) {
-    ifstream stream(path, std::ios::binary);
-    stream.seekg(PageStart(bufferID));
+    ifstream stream(BufferFilePath(bufferID), std::ios::binary);
+    // stream.seekg(PageStart(bufferID));
+    // cout << "[load buffer] page start: " << PageStart(bufferID) << endl;
     stream.read(reinterpret_cast<char *>(buffer.bytes.data()),
                 buffer.bytes.size());
     buffer.pos = 0;
@@ -33,8 +41,9 @@ void BufferManager::LoadBuffer(u16 bufferID, Buffer &buffer) {
 
 void BufferManager::SaveBuffer(u16 bufferID, Buffer &buffer) {
   if (bufferID < header.nPages) {
-    fstream stream(path, fstream::in | fstream::out | fstream::binary);
-    stream.seekp(PageStart(bufferID));
+    ofstream stream(BufferFilePath(bufferID), std::ios::binary);
+    // stream.seekp(PageStart(bufferID), std::ios::beg);
+    // cout << "[save buffer] page start: " << PageStart(bufferID) << endl;
     stream.write(reinterpret_cast<char *>(buffer.bytes.data()),
                  buffer.bytes.size());
   } else {
@@ -43,9 +52,14 @@ void BufferManager::SaveBuffer(u16 bufferID, Buffer &buffer) {
 }
 
 u16 BufferManager::AllocatePage() {
-  ofstream stream(path, std::ios::binary);
-  stream.seekp(header.pageSize, std::ios::end);
-  stream.write("", 0);
+  ofstream stream(BufferFilePath(header.nPages), std::ios_base::binary);
+  // cout << "[allocate page] file (" << directoryPath << ") "
+  //      << "header.pageSize = " << header.pageSize << endl;
+  // stream.seekp(header.pageSize, std::ios::beg);
+  // stream.write("", 0);
+  vector<u8> bytes(header.pageSize);
+  std::fill(bytes.begin(), bytes.end(), 0);
+  stream.write(reinterpret_cast<char *>(bytes.data()), bytes.size());
   header.nPages++;
   return header.nPages - 1;
 }
@@ -54,11 +68,16 @@ size_t BufferManager::PageStart(u16 bufferID) const {
   return header.pageSize * bufferID + header.ByteSize();
 }
 
+string BufferManager::BufferFilePath(u16 bufferID) const {
+  return directoryPath + "/" + std::to_string(bufferID) + ".bin";
+}
+
 void CreateEmptyDatabaseFile(string path, const DatabaseHeader &header) {
-  ofstream stream(path, std::ios::binary);
-  Buffer buffer(header.ByteSize());
-  buffer.WriteI64(header.pageSize);
-  buffer.WriteU16(header.nPages);
-  stream.write(reinterpret_cast<char *>(buffer.bytes.data()),
-               buffer.bytes.size());
+  // ofstream stream(path, std::ios::binary);
+  fs::create_directory(path);
+  // Buffer buffer(header.ByteSize());
+  // buffer.WriteI64(header.pageSize);
+  // buffer.WriteU16(header.nPages);
+  // stream.write(reinterpret_cast<char *>(buffer.bytes.data()),
+  //              buffer.bytes.size());
 }

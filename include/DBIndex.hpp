@@ -20,9 +20,6 @@ class DataPointer {
 
   DataPointer(u16 bufferID, u16 posIndex)
       : bufferID{bufferID}, posIndex{posIndex} {}
-  explicit DataPointer(i64 composedValue)
-      : bufferID{static_cast<u16>(composedValue / 65536)},
-        posIndex{static_cast<u16>(composedValue % 65536)} {}
 };
 
 class DBIndex {
@@ -30,9 +27,12 @@ class DBIndex {
   typedef variant<i64, string> Key;
 
   vector<Key> keys;
+  DataPointer dataPointer;
 
   DBIndex() = default;
-  explicit DBIndex(vector<Key> keys) : keys{keys} {}
+  explicit DBIndex(vector<Key> keys) : keys{keys}, dataPointer{} {}
+  DBIndex(vector<Key> keys, DataPointer dataPointer)
+      : keys{keys}, dataPointer{dataPointer} {}
   size_t ComputeSize() const;
 };
 
@@ -40,5 +40,8 @@ bool operator<(const DBIndex &left, const DBIndex &right);
 bool operator>(const DBIndex &left, const DBIndex &right);
 bool operator==(const DBIndex &left, const DBIndex &right);
 bool operator!=(const DBIndex &left, const DBIndex &right);
+
+DBIndex ReadDBIndex(const vector<DBColumn> &columns, Buffer &buffer);
+void WriteDBIndex(const DBIndex &index, Buffer &buffer);
 
 #endif  // DB_INDEX_HPP

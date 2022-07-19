@@ -111,13 +111,13 @@ bool operator==(const DBIndex &left, const DBIndex &right) {
         }
       } else {
         throw DBException(
-            "the two index keys for comparision have two different types");
+            "the two index keys for (==) comparision have two different types");
       }
     }
     return true;
   } else {
     throw DBException(
-        "the two index keys for comparision have two different types");
+        "the two index keys for (==) comparision have two different types");
   }
 }
 bool operator!=(const DBIndex &left, const DBIndex &right) {
@@ -143,12 +143,47 @@ bool operator!=(const DBIndex &left, const DBIndex &right) {
         }
       } else {
         throw DBException(
-            "the two index keys for comparision have two different types");
+            "the two index keys for (!=) comparision have two different types");
       }
     }
     return false;
   } else {
     throw DBException(
-        "the two index keys for comparision have two different types");
+        "the two index keys for (!=) comparision have two different types");
   }
+}
+
+DBIndex ReadDBIndex(const vector<DBColumn> &columns, Buffer &buffer) {
+  DBRow row = buffer.ReadRecord(columns);
+  vector<DBIndex::Key> keys;
+  keys.reserve(row.values.size());
+  for (DBRow::Value item : row.values) {
+    if (holds_alternative<i64>(item)) {
+      keys.push_back(std::get<i64>(item));
+    } else if (holds_alternative<string>(item)) {
+      keys.push_back(std::get<string>(item));
+    } else {
+      throw DBException("index key can only be integer or string");
+    }
+  }
+  u16 bufferID = buffer.ReadU16();
+  u16 posIndex = buffer.ReadU16();
+  return DBIndex(keys, DataPointer(bufferID, posIndex));
+}
+
+void WriteDBIndex(const DBIndex &index, Buffer &buffer) {
+  for (const auto &key : index.keys) {
+    if (holds_alternative<i64>(key)) {
+      buffer.WriteI64(std::get<i64>(key));
+    } else if (holds_alternative<string>(key)) {
+      const string &text = std::get<string>(key);
+      buffer.WriteU16(text.size());
+      buffer.WriteText(text);
+    } else {
+      throw DBException("index key type error");
+    }
+  }
+
+  buffer.WriteU16(index.dataPointer.bufferID);
+  buffer.WriteU16(index.dataPointer.posIndex);
 }

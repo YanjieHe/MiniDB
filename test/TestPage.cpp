@@ -30,7 +30,7 @@ TEST_CASE("Test Page", "[Page]") {
   dbHeader.pageSize = PAGE_SIZE;
 
   SECTION("Example Page") {
-    string path = "output/example_page.bin";
+    string path = "output/example_page";
 
     CreateEmptyDatabaseFile(path, dbHeader);
     BufferManager bufferManager(path, dbHeader);
@@ -43,7 +43,7 @@ TEST_CASE("Test Page", "[Page]") {
   }
 
   SECTION("Add a Row") {
-    string path = "output/add_a_row.bin";
+    string path = "output/add_a_row";
     Page page(columns, buffer, PAGE_SIZE);
     REQUIRE(page.NumOfRows() == 2);
     DBRow newRow = DBRow({DBString("The Three-Body Problem"), DBInt64(2008)});
@@ -63,7 +63,7 @@ TEST_CASE("Test Page", "[Page]") {
   }
 
   SECTION("Insert a Row") {
-    string path = "output/insert_a_row.bin";
+    string path = "output/insert_a_row";
     Page page(columns, buffer, PAGE_SIZE);
     REQUIRE(page.NumOfRows() == 2);
     DBRow newRow = DBRow({DBString("The Three-Body Problem"), DBInt64(2008)});
@@ -82,7 +82,7 @@ TEST_CASE("Test Page", "[Page]") {
                                  {"The Million Pound Bank Note", 1893}});
   }
   SECTION("Delete a Row") {
-    string path = "output/delete_a_row.bin";
+    string path = "output/delete_a_row";
     Page page(columns, buffer, PAGE_SIZE);
     REQUIRE(page.NumOfRows() == 2);
     REQUIRE(page.DeleteRow(buffer, 1));

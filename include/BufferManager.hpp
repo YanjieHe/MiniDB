@@ -4,7 +4,7 @@
 
 class BufferManager {
  public:
-  string path;
+  string directoryPath;
   DatabaseHeader header;
 
   BufferManager(string path, DatabaseHeader header);
@@ -13,6 +13,9 @@ class BufferManager {
   void SaveBuffer(u16 bufferID, Buffer &buffer);
   u16 AllocatePage();
   size_t PageStart(u16 bufferID) const;
+
+ private:
+  string BufferFilePath(u16 bufferID) const;
 };
 
 void CreateEmptyDatabaseFile(string path, const DatabaseHeader &header);

@@ -35,17 +35,17 @@ class BPlusTreeNode {
 
   BPlusTreeNode(BPlusTreeSharedData &sharedData);
   BPlusTreeNode(BPlusTreeSharedData &sharedData, u16 pageID);
-  ~BPlusTreeNode();
+  void Save() const;
 };
 
-class BPlusTreePage {
- public:
-  u16 pageID;
-  BPlusTreeSharedData &sharedData;
+// class BPlusTreePage {
+//  public:
+//   u16 pageID;
+//   BPlusTreeSharedData &sharedData;
 
-  BPlusTreeNode LoadNode();
-  void SaveNode(const BPlusTreeNode &node);
-};
+//   BPlusTreeNode LoadNode();
+//   void SaveNode(const BPlusTreeNode &node);
+// };
 
 class IndexPage {
  public:
@@ -57,7 +57,7 @@ class IndexPage {
   void LoadAllIndices(Buffer &buffer, vector<DBIndex> &indices);
   void LoadAllPointers(Buffer &buffer, vector<u16> &pointers);
   DBIndex ReadIndex(Buffer &buffer);
-  void Store(BPlusTreeNode *node);
+  void Store(const BPlusTreeNode *node);
 };
 
 class BPlusTree {
@@ -72,6 +72,7 @@ class BPlusTree {
                       BPlusTreeNode::Ptr child);
   BPlusTreeNode::Ptr FindParent(BPlusTreeNode::Ptr cursor,
                                 BPlusTreeNode::Ptr child);
+  optional<DataPointer> Search(DBIndex index);
 };
 
 #endif  // B_PLUS_TREE_HPP
