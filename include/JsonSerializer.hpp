@@ -5,6 +5,7 @@
 
 #include "DBColumn.hpp"
 #include "Page.hpp"
+#include "BPlusTree.hpp"
 
 using Json = nlohmann::json;
 
@@ -13,8 +14,10 @@ class JsonSerializer {
   static Json PageHeaderToJson(const PageHeader &header);
   static Json DBRowToJson(const DBRow &record);
   static Json DBColumnToJson(const DBColumn &column);
-  static Json PageInfoToJson(const Page& page);
+  static Json PageInfoToJson(const IPage& page);
   static Json PageToJson(const Page& page, Buffer& buffer);
+  static Json BPlusTreePageToJson(const IndexPage& page, Buffer& buffer);
+  static Json BPlusTreeIndexToJson(const DBIndex& index);
 };
 
 #endif /* JSON_SERIALIZER_HPP */

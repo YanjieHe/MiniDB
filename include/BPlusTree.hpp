@@ -47,17 +47,20 @@ class BPlusTreeNode {
 //   void SaveNode(const BPlusTreeNode &node);
 // };
 
-class IndexPage {
+class IndexPage : public IPage {
  public:
+  u16 pageID;
   PageHeader header;
   vector<DBColumn> columns;
 
   IndexPage(const vector<DBColumn> &columns, Buffer &buffer, size_t pageSize);
   IndexPage(PageHeader pageHeader, const vector<DBColumn> &columns);
-  void LoadAllIndices(Buffer &buffer, vector<DBIndex> &indices);
-  void LoadAllPointers(Buffer &buffer, vector<u16> &pointers);
-  DBIndex ReadIndex(Buffer &buffer);
+  size_t LoadAllIndices(Buffer &buffer, vector<DBIndex> &indices) const;
+  size_t LoadAllPointers(Buffer &buffer, vector<u16> &pointers) const;
   void Store(const BPlusTreeNode *node);
+
+  const PageHeader &Header() const override;
+  const vector<DBColumn> &Columns() const override;
 };
 
 class BPlusTree {
@@ -72,7 +75,7 @@ class BPlusTree {
                       BPlusTreeNode::Ptr child);
   BPlusTreeNode::Ptr FindParent(BPlusTreeNode::Ptr cursor,
                                 BPlusTreeNode::Ptr child);
-  optional<DataPointer> Search(DBIndex index);
+  optional<u16> Search(DBIndex index);
 };
 
 #endif  // B_PLUS_TREE_HPP

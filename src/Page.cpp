@@ -116,3 +116,7 @@ void Page::UpdateHeader(Buffer &buffer) const {
     buffer.SaveHeader(header);
   });
 }
+
+const PageHeader &Page::Header() const { return header; }
+
+const vector<DBColumn> &Page::Columns() const { return columns; }

@@ -166,9 +166,7 @@ DBIndex ReadDBIndex(const vector<DBColumn> &columns, Buffer &buffer) {
       throw DBException("index key can only be integer or string");
     }
   }
-  u16 bufferID = buffer.ReadU16();
-  u16 posIndex = buffer.ReadU16();
-  return DBIndex(keys, DataPointer(bufferID, posIndex));
+  return DBIndex(keys);
 }
 
 void WriteDBIndex(const DBIndex &index, Buffer &buffer) {
@@ -183,7 +181,4 @@ void WriteDBIndex(const DBIndex &index, Buffer &buffer) {
       throw DBException("index key type error");
     }
   }
-
-  buffer.WriteU16(index.dataPointer.bufferID);
-  buffer.WriteU16(index.dataPointer.posIndex);
 }

@@ -2,7 +2,13 @@
 #define MINIDB_PAGE_HPP
 #include "Buffer.hpp"
 
-class Page {
+class IPage {
+ public:
+  virtual const PageHeader &Header() const = 0;
+  virtual const vector<DBColumn> &Columns() const = 0;
+};
+
+class Page: public IPage {
  public:
   PageHeader header;
   vector<DBColumn> columns;
@@ -19,6 +25,9 @@ class Page {
   void UpdateHeader(Buffer &buffer) const;
   size_t NumOfRows() const { return header.numOfEntries; }
   bool IsLeaf() const { return header.pageType == PageType::B_PLUS_TREE_LEAF; }
+
+  const PageHeader &Header() const override;
+  const vector<DBColumn> &Columns() const override;
 };
 
 #endif  // MINIDB_PAGE_HPP

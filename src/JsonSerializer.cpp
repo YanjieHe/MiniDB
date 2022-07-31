@@ -38,11 +38,11 @@ Json JsonSerializer::DBColumnToJson(const DBColumn& column) {
           {"nullable", column.nullable}};
 }
 
-Json JsonSerializer::PageInfoToJson(const Page& page) {
-  Json headerJson = PageHeaderToJson(page.header);
-  vector<Json> columnsJson(page.columns.size());
-  for (size_t i = 0; i < page.columns.size(); i++) {
-    columnsJson.at(i) = DBColumnToJson(page.columns.at(i));
+Json JsonSerializer::PageInfoToJson(const IPage& page) {
+  Json headerJson = PageHeaderToJson(page.Header());
+  vector<Json> columnsJson(page.Columns().size());
+  for (size_t i = 0; i < page.Columns().size(); i++) {
+    columnsJson.at(i) = DBColumnToJson(page.Columns().at(i));
   }
   return {{"header", headerJson}, {"columns", columnsJson}};
 }
@@ -56,4 +56,40 @@ Json JsonSerializer::PageToJson(const Page& page, Buffer& buffer) {
   }
   pageJson["rows"] = rowsJson;
   return pageJson;
+}
+
+Json JsonSerializer::BPlusTreePageToJson(const IndexPage& page,
+                                         Buffer& buffer) {
+  Json pageJson = PageInfoToJson(page);
+  vector<Json> rowsJson;
+  vector<DBIndex> indices(page.header.numOfEntries / 2);
+  vector<u16> pointers((page.header.numOfEntries / 2) + 1);
+  page.LoadAllIndices(buffer, indices);
+  page.LoadAllPointers(buffer, pointers);
+  for (int i = 0; i < page.header.numOfEntries; i++) {
+    if (i % 2 == 0) {
+      rowsJson.push_back(pointers.at(i / 2));
+    } else {
+      rowsJson.push_back(BPlusTreeIndexToJson(indices.at(i / 2)));
+    }
+  }
+  pageJson["rows"] = rowsJson;
+  return pageJson;
+}
+
+Json JsonSerializer::BPlusTreeIndexToJson(const DBIndex& index) {
+  Json indexJson;
+  vector<Json> keysJson;
+  for (const DBIndex::Key& key : index.keys) {
+    if (std::holds_alternative<i64>(key)) {
+      keysJson.push_back(std::get<i64>(key));
+    } else if (std::holds_alternative<string>(key)) {
+      keysJson.push_back(std::get<string>(key));
+    } else {
+      throw DBException(string(__FUNCTION__) +
+                        ": the index key is not a supported type");
+    }
+  }
+  indexJson["keys"] = keysJson;
+  return indexJson;
 }

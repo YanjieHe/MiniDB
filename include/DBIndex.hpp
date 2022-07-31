@@ -27,12 +27,9 @@ class DBIndex {
   typedef variant<i64, string> Key;
 
   vector<Key> keys;
-  DataPointer dataPointer;
 
   DBIndex() = default;
-  explicit DBIndex(vector<Key> keys) : keys{keys}, dataPointer{} {}
-  DBIndex(vector<Key> keys, DataPointer dataPointer)
-      : keys{keys}, dataPointer{dataPointer} {}
+  explicit DBIndex(vector<Key> keys) : keys{keys} {}
   size_t ComputeSize() const;
 };
 
