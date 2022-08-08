@@ -42,13 +42,13 @@ size_t IndexPage::LoadAllIndices(Buffer &buffer,
   return offset;
 }
 
-size_t IndexPage::LoadAllPointers(Buffer &buffer, vector<u16> &pointers) const {
+size_t IndexPage::LoadAllPointers(Buffer &buffer, vector<i64> &pointers) const {
   size_t offset = 0;
   for (size_t i = 0; i < header.recordInfoArray.size(); i++) {
     if (i % 2 == 0) {
       buffer.PreserveBufferPos([this, &buffer, &pointers, i, offset]() {
         buffer.pos = header.recordInfoArray.at(i).location;
-        pointers.at(offset) = buffer.ReadU16();
+        pointers.at(offset) = buffer.ReadI64();
       });
       offset++;
     }
@@ -65,10 +65,11 @@ void IndexPage::Store(const BPlusTreeNode *node) {
   }
   header.recordInfoArray.clear();
   size_t curPos = node->sharedData.pageSize;
+  size_t dataPointerSize = sizeof(i64);
   for (size_t i = 0; i < header.numOfEntries; i++) {
     if (i % 2 == 0) {
-      curPos = curPos - sizeof(u16);
-      header.recordInfoArray.emplace_back(curPos, sizeof(u16));
+      curPos = curPos - dataPointerSize;
+      header.recordInfoArray.emplace_back(curPos, dataPointerSize);
     } else {
       curPos = curPos - node->indices.at(i / 2).ComputeSize();
       header.recordInfoArray.emplace_back(
@@ -84,7 +85,7 @@ void IndexPage::Store(const BPlusTreeNode *node) {
     if (i % 2 == 0) {
       /* pointer */
       node->sharedData.buffer.pos = header.recordInfoArray.at(i).location;
-      node->sharedData.buffer.WriteU16(node->pointers.at(i / 2));
+      node->sharedData.buffer.WriteI64(node->pointers.at(i / 2));
     } else {
       /* index */
       node->sharedData.buffer.pos = header.recordInfoArray.at(i).location;
@@ -130,7 +131,7 @@ BPlusTreeNode::BPlusTreeNode(BPlusTreeSharedData &sharedData)
       indices(sharedData.order),
       pointers(sharedData.order + 1) {
   for (size_t i = 0; i < pointers.size(); i++) {
-    pointers.at(i) = 65535;
+    pointers.at(i) = -1;
   }
   sharedData.buffer.Clear();
   sharedData.buffer.SaveHeader(EmptyIndexPageHeader(
@@ -149,7 +150,7 @@ BPlusTreeNode::BPlusTreeNode(BPlusTreeSharedData &sharedData, u16 pageID)
       indices(sharedData.order),
       pointers(sharedData.order + 1) {
   for (size_t i = 0; i < pointers.size(); i++) {
-    pointers.at(i) = 65535;
+    pointers.at(i) = -1;
   }
   sharedData.bufferManager.LoadBuffer(pageID, sharedData.buffer);
   IndexPage indexPage(sharedData.columns, sharedData.buffer,
@@ -170,13 +171,14 @@ BPlusTree::BPlusTree(int order, BufferManager &bufferManager, size_t pageSize,
                      const vector<DBColumn> &columns)
     : root(), sharedData(order, bufferManager, pageSize, columns) {}
 
-void BPlusTree::Insert(const DBIndex &indexToInsert) {
+void BPlusTree::Insert(const DBIndex &indexToInsert, i64 dataPointer) {
   int order = sharedData.order;
 
   /* if there is no root node, create a new root node */
   if (bool(root) == false) {
     root = make_shared<BPlusTreeNode>(sharedData);
     root->indices.at(0) = indexToInsert;
+    root->pointers.at(0) = dataPointer;
     root->isLeaf = true;
     root->size = 1;
     root->Save();
@@ -215,38 +217,60 @@ void BPlusTree::Insert(const DBIndex &indexToInsert) {
       cursor->indices.at(i) = indexToInsert;
       cursor->size++;
       cursor->pointers.at(cursor->size) = cursor->pointers.at(cursor->size - 1);
-      cursor->pointers.at(cursor->size - 1) = 0;
+      cursor->pointers.at(cursor->size - 1) = -1;
+
+      /*************************/
+      for (int j = cursor->size; j > i; j--) {
+        cursor->pointers.at(j) = cursor->pointers.at(j - 1);
+      }
+      cursor->pointers.at(i) = dataPointer;
+      /*************************/
+
       cursor->Save();
     } else {
       /* create a new leaf node */
-      BPlusTreeNode::Ptr newLeaf =
-          make_shared<BPlusTreeNode>(sharedData);  // TO DO: distinguish new
-                                                   // page and existing page
+      BPlusTreeNode::Ptr newLeaf = make_shared<BPlusTreeNode>(sharedData);
       vector<DBIndex> virtualIndices(order + 1);
+
+      /*****************/
+      vector<i64> virtualPointers(order + 2);
+      /*****************/
 
       for (int k = 0; k < order; k++) {
         virtualIndices.at(k) = cursor->indices.at(k);
       }
 
-      int i = 0;
+      /*****************/
+      for (int k = 0; k < order + 1; k++) {
+        virtualPointers.at(k) = cursor->pointers.at(k);
+      }
+      /*****************/
+
+      int location = 0;
 
       /* find where to insert the new node */
-      while (i < order && indexToInsert > virtualIndices.at(i)) {
-        i++;
+      while (location < order && indexToInsert > virtualIndices.at(location)) {
+        location++;
       }
 
       /* move indices */
-      for (int k = order; k > i; k--) {
+      for (int k = order; k > location; k--) {
         virtualIndices.at(k) = virtualIndices.at(k - 1);
       }
 
-      virtualIndices.at(i) = indexToInsert;
+      /*********** BEGIN ************/
+      for (int k = order + 1; k > location; k--) {
+        virtualPointers.at(k) = virtualPointers.at(k - 1);
+      }
+      /************ END *************/
+
+      virtualIndices.at(location) = indexToInsert;
       newLeaf->isLeaf = true;
       cursor->size = (order + 1) / 2;
       newLeaf->size = order + 1 - (order + 1) / 2;
       cursor->pointers.at(cursor->size) = newLeaf->pageID;
       newLeaf->pointers.at(newLeaf->size) = cursor->pointers.at(order);
-      cursor->pointers.at(order) = 0;
+      cursor->pointers.at(order) = -1;
 
       /* copy the first half of indices */
       for (int i = 0; i < cursor->size; i++) {
@@ -257,6 +281,17 @@ void BPlusTree::Insert(const DBIndex &indexToInsert) {
       for (int i = 0, j = cursor->size; i < newLeaf->size; i++, j++) {
         newLeaf->indices.at(i) = virtualIndices.at(j);
       }
+
+      /*********** BEGIN ************/
+      virtualPointers.at(location) = dataPointer;
+      for (int i = 0; i < cursor->size; i++) {
+        cursor->pointers.at(i) = virtualPointers.at(i);
+      }
+
+      for (int i = 0, j = cursor->size; i < newLeaf->size + 1; i++, j++) {
+        newLeaf->pointers.at(i) = virtualPointers.at(j);
+      }
+      /************ END *************/
 
       cursor->Save();
       newLeaf->Save();
@@ -299,6 +334,7 @@ void BPlusTree::InsertInternal(const DBIndex &indexToInsert,
     }
     /* insert the index */
     cursor->indices.at(i) = indexToInsert;
+    cursor->pointers.at(i) = -2;
     /* insert the pointer */
     cursor->pointers.at(i + 1) = child->pageID;
     /* increase the count of nodes */
@@ -311,7 +347,7 @@ void BPlusTree::InsertInternal(const DBIndex &indexToInsert,
     /* create virtual indices */
     vector<DBIndex> virtualIndices(order + 1);
     /* create virtual pointers */
-    vector<u16> virtualPointers(order + 2);
+    vector<i64> virtualPointers(order + 2);
     /* copy all the indices from the cursor to the virtual indices */
     for (int k = 0; k < order; k++) {
       virtualIndices.at(k) = cursor->indices.at(k);
@@ -337,6 +373,7 @@ void BPlusTree::InsertInternal(const DBIndex &indexToInsert,
     }
     /* insert the index */
     virtualIndices.at(i) = indexToInsert;
+    virtualPointers.at(i) = -2;
     /* insert the pointer */
     virtualPointers.at(i + 1) = child->pageID;
 
@@ -395,22 +432,19 @@ BPlusTreeNode::Ptr BPlusTree::FindParent(BPlusTreeNode::Ptr cursor,
   }
 }
 
-optional<u16> BPlusTree::Search(DBIndex index) {
+optional<i64> BPlusTree::Search(DBIndex index) {
   if (root) {
     BPlusTreeNode::Ptr cursor = root;
 
     while (cursor->isLeaf == false) {
       for (int i = 0; i < cursor->size; i++) {
         if (index < cursor->indices.at(i)) {
-          cout << "move to buffer {" << cursor->pointers.at(i) << "}" << endl;
           cursor =
               make_shared<BPlusTreeNode>(sharedData, cursor->pointers.at(i));
           break;
         }
 
         if (i == cursor->size - 1) {
-          cout << "reaches to an end; move to buffer {"
-               << cursor->pointers.at(i + 1) << "}" << endl;
           cursor = make_shared<BPlusTreeNode>(sharedData,
                                               cursor->pointers.at(i + 1));
           break;
@@ -419,11 +453,8 @@ optional<u16> BPlusTree::Search(DBIndex index) {
     }
 
     for (int i = 0; i < cursor->size; i++) {
-      cout << "cursor->indices.at(i).keys.size(): "
-           << cursor->indices.at(i).keys.size() << endl;
-      cout << "index.keys.size(): " << index.keys.size() << endl;
       if (cursor->indices.at(i) == index) {
-        return make_optional<u16>(cursor->pointers.at(i));
+        return make_optional<i64>(cursor->pointers.at(i));
       }
     }
 

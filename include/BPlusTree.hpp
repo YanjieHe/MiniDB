@@ -31,7 +31,7 @@ class BPlusTreeNode {
   bool isLeaf;
   int size;
   vector<DBIndex> indices;
-  vector<u16> pointers;
+  vector<i64> pointers;
 
   BPlusTreeNode(BPlusTreeSharedData &sharedData);
   BPlusTreeNode(BPlusTreeSharedData &sharedData, u16 pageID);
@@ -56,7 +56,7 @@ class IndexPage : public IPage {
   IndexPage(const vector<DBColumn> &columns, Buffer &buffer, size_t pageSize);
   IndexPage(PageHeader pageHeader, const vector<DBColumn> &columns);
   size_t LoadAllIndices(Buffer &buffer, vector<DBIndex> &indices) const;
-  size_t LoadAllPointers(Buffer &buffer, vector<u16> &pointers) const;
+  size_t LoadAllPointers(Buffer &buffer, vector<i64> &pointers) const;
   void Store(const BPlusTreeNode *node);
 
   const PageHeader &Header() const override;
@@ -70,12 +70,12 @@ class BPlusTree {
 
   BPlusTree(int order, BufferManager &bufferManager, size_t pageSize,
             const vector<DBColumn> &columns);
-  void Insert(const DBIndex &indexToInsert);
+  void Insert(const DBIndex &indexToInsert, i64 dataPointer);
   void InsertInternal(const DBIndex &indexToInsert, BPlusTreeNode::Ptr cursor,
                       BPlusTreeNode::Ptr child);
   BPlusTreeNode::Ptr FindParent(BPlusTreeNode::Ptr cursor,
                                 BPlusTreeNode::Ptr child);
-  optional<u16> Search(DBIndex index);
+  optional<i64> Search(DBIndex index);
 };
 
 #endif  // B_PLUS_TREE_HPP

@@ -63,7 +63,7 @@ Json JsonSerializer::BPlusTreePageToJson(const IndexPage& page,
   Json pageJson = PageInfoToJson(page);
   vector<Json> rowsJson;
   vector<DBIndex> indices(page.header.numOfEntries / 2);
-  vector<u16> pointers((page.header.numOfEntries / 2) + 1);
+  vector<i64> pointers((page.header.numOfEntries / 2) + 1);
   page.LoadAllIndices(buffer, indices);
   page.LoadAllPointers(buffer, pointers);
   for (int i = 0; i < page.header.numOfEntries; i++) {
