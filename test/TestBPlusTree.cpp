@@ -18,8 +18,8 @@ TEST_CASE("Test B+ Tree", "[B+ Tree]") {
   DatabaseHeader dbHeader;
   dbHeader.pageSize = PAGE_SIZE;
 
-  SECTION("single index") {
-    string path = "output/b_plus_tree";
+  SECTION("single index: book example") {
+    string path = "output/book_b_plus_tree";
     CreateEmptyDatabaseFile(path, dbHeader);
     BufferManager bufferManager(path, dbHeader);
 
@@ -28,8 +28,6 @@ TEST_CASE("Test B+ Tree", "[B+ Tree]") {
     tree.Insert(DBIndex({StringKey("The Million Pound Bank Note")}), 20);
     tree.Insert(DBIndex({StringKey("The Catcher in the Rye")}), 30);
     tree.Insert(DBIndex({StringKey("Pride and Prejudice")}), 40);
-
-    // cout << "columns size = " << tree.sharedData.columns.size() << endl;
 
     for (int pageNumber = 0; pageNumber < 3; pageNumber++) {
       bufferManager.LoadBuffer(pageNumber, tree.sharedData.buffer);
@@ -51,12 +49,5 @@ TEST_CASE("Test B+ Tree", "[B+ Tree]") {
             std::make_optional<i64>(30));
     REQUIRE(tree.Search(DBIndex({StringKey("Pride and Prejudice")})) ==
             std::make_optional<i64>(40));
-
-    if (auto dataPointer =
-            tree.Search(DBIndex({StringKey("The Red and the Black")}))) {
-      cout << "searched result: data pointer = " << dataPointer.value() << endl;
-    } else {
-      REQUIRE(false);
-    }
   }
 }
