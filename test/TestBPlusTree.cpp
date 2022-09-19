@@ -30,18 +30,6 @@ TEST_CASE("Book Example B+ Tree Test", "[B+ Tree]") {
     tree.Insert(DBIndex({StringKey("The Catcher in the Rye")}), 30);
     tree.Insert(DBIndex({StringKey("Pride and Prejudice")}), 40);
 
-    // for (int pageNumber = 0; pageNumber < 3; pageNumber++) {
-    //   bufferManager.LoadBuffer(pageNumber, tree.sharedData.buffer);
-    //   IndexPage indexPage(tree.sharedData.columns, tree.sharedData.buffer,
-    //                       PAGE_SIZE);
-
-    //   cout << "page " << pageNumber << endl;
-    //   cout << std::setw(4)
-    //        << JsonSerializer::BPlusTreePageToJson(indexPage,
-    //                                               tree.sharedData.buffer)
-    //        << endl;
-    // }
-
     REQUIRE(tree.Search(DBIndex({StringKey("The Red and the Black")})) ==
             std::make_optional<i64>(10));
     REQUIRE(tree.Search(DBIndex({StringKey("The Million Pound Bank Note")})) ==
@@ -67,19 +55,29 @@ TEST_CASE("Integer Index B+ Tree Test", "[B+ Tree]") {
     BufferManager bufferManager(path, dbHeader);
 
     BPlusTree tree(order, bufferManager, PAGE_SIZE, indexColumns);
-    for (int i = 0; i < 3; i++) {
-      tree.Insert(DBIndex({56 + i}), (i + 1) * 10);
+    vector<std::pair<int, int>> keyValuePairs;
+    for (int i = 0; i < 4; i++) {
+      int key = 56 + i;
+      int value = (i + 1) * 10;
+      tree.Insert(DBIndex({key}), value);
+      keyValuePairs.push_back({key, value});
     }
-    // for (int pageNumber = 0; pageNumber < 3; pageNumber++) {
-    //   bufferManager.LoadBuffer(pageNumber, tree.sharedData.buffer);
-    //   IndexPage indexPage(tree.sharedData.columns, tree.sharedData.buffer,
-    //                       PAGE_SIZE);
 
-    //   cout << "page " << pageNumber << endl;
-    //   cout << std::setw(4)
-    //        << JsonSerializer::BPlusTreePageToJson(indexPage,
-    //                                               tree.sharedData.buffer)
-    //        << endl;
-    // }
+    for (auto pair : keyValuePairs) {
+      cout << "insert: { key : " << pair.first << ", value : " << pair.second
+           << " }" << endl;
+    }
+
+    for (int pageNumber = 0; pageNumber < 3; pageNumber++) {
+      bufferManager.LoadBuffer(pageNumber, tree.sharedData.buffer);
+      IndexPage indexPage(tree.sharedData.columns, tree.sharedData.buffer,
+                          PAGE_SIZE);
+
+      cout << "page " << pageNumber << endl;
+      cout << std::setw(4)
+           << JsonSerializer::BPlusTreePageToJson(indexPage,
+                                                  tree.sharedData.buffer)
+           << endl;
+    }
   }
 }
