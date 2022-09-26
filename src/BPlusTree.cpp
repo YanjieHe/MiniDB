@@ -131,7 +131,7 @@ BPlusTreeNode::BPlusTreeNode(BPlusTreeSharedData &sharedData)
       indices(sharedData.order),
       pointers(sharedData.order + 1) {
   for (size_t i = 0; i < pointers.size(); i++) {
-    pointers.at(i) = -1;
+    pointers.at(i) = -3;
   }
   sharedData.buffer.Clear();
   sharedData.buffer.SaveHeader(EmptyIndexPageHeader(
@@ -150,7 +150,7 @@ BPlusTreeNode::BPlusTreeNode(BPlusTreeSharedData &sharedData, u16 pageID)
       indices(sharedData.order),
       pointers(sharedData.order + 1) {
   for (size_t i = 0; i < pointers.size(); i++) {
-    pointers.at(i) = -1;
+    pointers.at(i) = -4;
   }
   sharedData.bufferManager.LoadBuffer(pageID, sharedData.buffer);
   IndexPage indexPage(sharedData.columns, sharedData.buffer,
@@ -270,7 +270,7 @@ void BPlusTree::Insert(const DBIndex &indexToInsert, i64 dataPointer) {
       newLeaf->size = order + 1 - (order + 1) / 2;
       cursor->pointers.at(cursor->size) = newLeaf->pageID;
       newLeaf->pointers.at(newLeaf->size) = cursor->pointers.at(order);
-      cursor->pointers.at(order) = -1;
+      cursor->pointers.at(order) = -7;
 
       /* copy the first half of indices */
       for (int i = 0; i < cursor->size; i++) {
@@ -334,7 +334,7 @@ void BPlusTree::InsertInternal(const DBIndex &indexToInsert,
     }
     /* insert the index */
     cursor->indices.at(i) = indexToInsert;
-    cursor->pointers.at(i) = -2;
+    // cursor->pointers.at(i) = -5;
     /* insert the pointer */
     cursor->pointers.at(i + 1) = child->pageID;
     /* increase the count of nodes */
@@ -373,7 +373,7 @@ void BPlusTree::InsertInternal(const DBIndex &indexToInsert,
     }
     /* insert the index */
     virtualIndices.at(i) = indexToInsert;
-    virtualPointers.at(i) = -2;
+    // virtualPointers.at(i) = -2;
     /* insert the pointer */
     virtualPointers.at(i + 1) = child->pageID;
 

@@ -21,7 +21,6 @@ TEST_CASE("Book Example B+ Tree Test", "[B+ Tree]") {
 
   SECTION("single index: book example") {
     string path = "output/book_b_plus_tree";
-    CreateEmptyDatabaseFile(path, dbHeader);
     BufferManager bufferManager(path, dbHeader);
 
     BPlusTree tree(order, bufferManager, PAGE_SIZE, columns);
@@ -51,33 +50,34 @@ TEST_CASE("Integer Index B+ Tree Test", "[B+ Tree]") {
 
   SECTION("single index: integer index example") {
     string path = "output/integer_b_plus_tree";
-    CreateEmptyDatabaseFile(path, dbHeader);
     BufferManager bufferManager(path, dbHeader);
 
     BPlusTree tree(order, bufferManager, PAGE_SIZE, indexColumns);
     vector<std::pair<int, int>> keyValuePairs;
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 40; i++) {
       int key = 56 + i;
       int value = (i + 1) * 10;
       tree.Insert(DBIndex({key}), value);
       keyValuePairs.push_back({key, value});
     }
 
+    cout << std::setw(4)
+         << JsonSerializer::DatabaseHeaderToJson(bufferManager.header) << endl;
+
     for (auto pair : keyValuePairs) {
-      cout << "insert: { key : " << pair.first << ", value : " << pair.second
-           << " }" << endl;
+      cout << "insert: { key : " << pair.first;
+      cout << ", value : " << pair.second << " }" << endl;
     }
 
-    for (int pageNumber = 0; pageNumber < 3; pageNumber++) {
-      bufferManager.LoadBuffer(pageNumber, tree.sharedData.buffer);
-      IndexPage indexPage(tree.sharedData.columns, tree.sharedData.buffer,
-                          PAGE_SIZE);
+    DisplayBPlusTreePages(bufferManager, tree);
 
-      cout << "page " << pageNumber << endl;
-      cout << std::setw(4)
-           << JsonSerializer::BPlusTreePageToJson(indexPage,
-                                                  tree.sharedData.buffer)
-           << endl;
+    bufferManager.UpdateDatabaseHeaderToDisk();
+
+    for (auto pair : keyValuePairs) {
+      cout << "search key " << pair.first << endl;
+      auto result = tree.Search(DBIndex({Int64Key(pair.first)}));
+      REQUIRE(bool(result));
+      REQUIRE(result.value() == pair.second);
     }
   }
 }

@@ -4,7 +4,7 @@
 
 using std::holds_alternative;
 
-Json JsonSerializer::PageHeaderToJson(const PageHeader& header) {
+Json JsonSerializer::PageHeaderToJson(const PageHeader &header) {
   vector<Json> dbRowInfoArray;
   for (auto info : header.recordInfoArray) {
     dbRowInfoArray.push_back(
@@ -16,7 +16,7 @@ Json JsonSerializer::PageHeaderToJson(const PageHeader& header) {
           {"recordInfoArray", dbRowInfoArray}};
 }
 
-Json JsonSerializer::DBRowToJson(const DBRow& record) {
+Json JsonSerializer::DBRowToJson(const DBRow &record) {
   Json obj;
   for (auto value : record.values) {
     if (holds_alternative<monostate>(value)) {
@@ -32,13 +32,13 @@ Json JsonSerializer::DBRowToJson(const DBRow& record) {
   return obj;
 }
 
-Json JsonSerializer::DBColumnToJson(const DBColumn& column) {
+Json JsonSerializer::DBColumnToJson(const DBColumn &column) {
   return {{"name", column.name},
           {"type", magic_enum::enum_name(column.type)},
           {"nullable", column.nullable}};
 }
 
-Json JsonSerializer::PageInfoToJson(const IPage& page) {
+Json JsonSerializer::PageInfoToJson(const IPage &page) {
   Json headerJson = PageHeaderToJson(page.Header());
   vector<Json> columnsJson(page.Columns().size());
   for (size_t i = 0; i < page.Columns().size(); i++) {
@@ -47,7 +47,7 @@ Json JsonSerializer::PageInfoToJson(const IPage& page) {
   return {{"header", headerJson}, {"columns", columnsJson}};
 }
 
-Json JsonSerializer::PageToJson(const Page& page, Buffer& buffer) {
+Json JsonSerializer::PageToJson(const Page &page, Buffer &buffer) {
   Json pageJson = PageInfoToJson(page);
   vector<Json> rowsJson(page.header.numOfEntries);
   for (size_t i = 0; i < page.header.numOfEntries; i++) {
@@ -58,8 +58,8 @@ Json JsonSerializer::PageToJson(const Page& page, Buffer& buffer) {
   return pageJson;
 }
 
-Json JsonSerializer::BPlusTreePageToJson(const IndexPage& page,
-                                         Buffer& buffer) {
+Json JsonSerializer::BPlusTreePageToJson(const IndexPage &page,
+                                         Buffer &buffer) {
   Json pageJson = PageInfoToJson(page);
   vector<Json> rowsJson;
   vector<DBIndex> indices(page.header.numOfEntries / 2);
@@ -77,10 +77,10 @@ Json JsonSerializer::BPlusTreePageToJson(const IndexPage& page,
   return pageJson;
 }
 
-Json JsonSerializer::BPlusTreeIndexToJson(const DBIndex& index) {
+Json JsonSerializer::BPlusTreeIndexToJson(const DBIndex &index) {
   Json indexJson;
   vector<Json> keysJson;
-  for (const DBIndex::Key& key : index.keys) {
+  for (const DBIndex::Key &key : index.keys) {
     if (std::holds_alternative<i64>(key)) {
       keysJson.push_back(std::get<i64>(key));
     } else if (std::holds_alternative<string>(key)) {
@@ -92,4 +92,11 @@ Json JsonSerializer::BPlusTreeIndexToJson(const DBIndex& index) {
   }
   indexJson["keys"] = keysJson;
   return indexJson;
+}
+
+Json JsonSerializer::DatabaseHeaderToJson(const DatabaseHeader &header) {
+  Json headerJson;
+  headerJson["nPages"] = header.nPages;
+  headerJson["pageSize"] = header.pageSize;
+  return headerJson;
 }

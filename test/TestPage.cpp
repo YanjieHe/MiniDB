@@ -32,7 +32,6 @@ TEST_CASE("Test Page", "[Page]") {
   SECTION("Example Page") {
     string path = "output/example_page";
 
-    CreateEmptyDatabaseFile(path, dbHeader);
     BufferManager bufferManager(path, dbHeader);
     u16 pageID = bufferManager.AllocatePage();
     bufferManager.SaveBuffer(pageID, buffer);
@@ -51,7 +50,6 @@ TEST_CASE("Test Page", "[Page]") {
     REQUIRE(page.NumOfRows() == 3);
     page.UpdateHeader(buffer);
 
-    CreateEmptyDatabaseFile(path, dbHeader);
     BufferManager bufferManager(path, dbHeader);
     u16 pageID = bufferManager.AllocatePage();
     bufferManager.SaveBuffer(pageID, buffer);
@@ -71,7 +69,6 @@ TEST_CASE("Test Page", "[Page]") {
     REQUIRE(page.NumOfRows() == 3);
     page.UpdateHeader(buffer);
 
-    CreateEmptyDatabaseFile(path, dbHeader);
     BufferManager bufferManager(path, dbHeader);
     u16 pageID = bufferManager.AllocatePage();
     bufferManager.SaveBuffer(pageID, buffer);
@@ -89,7 +86,6 @@ TEST_CASE("Test Page", "[Page]") {
     REQUIRE(page.NumOfRows() == 1);
     page.UpdateHeader(buffer);
 
-    CreateEmptyDatabaseFile(path, dbHeader);
     BufferManager bufferManager(path, dbHeader);
     u16 pageID = bufferManager.AllocatePage();
     bufferManager.SaveBuffer(pageID, buffer);

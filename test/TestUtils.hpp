@@ -4,10 +4,11 @@
 #include "DBColumn.hpp"
 #include "DBIndex.hpp"
 #include "DBRow.hpp"
+#include "BPlusTree.hpp"
 
 using nlohmann::json;
 
-const size_t PAGE_SIZE = 65536;
+const size_t PAGE_SIZE = 256;
 
 void PrintFormattedJson(json jsonObj);
 
@@ -26,3 +27,5 @@ vector<DBColumn> BookIndexColumn();
 vector<DBRow> BookRows();
 
 Buffer CreateBookPage();
+
+void DisplayBPlusTreePages(BufferManager &bufferManager, BPlusTree &tree);

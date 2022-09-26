@@ -18,6 +18,7 @@ class JsonSerializer {
   static Json PageToJson(const Page& page, Buffer& buffer);
   static Json BPlusTreePageToJson(const IndexPage& page, Buffer& buffer);
   static Json BPlusTreeIndexToJson(const DBIndex& index);
+  static Json DatabaseHeaderToJson(const DatabaseHeader& header);
 };
 
 #endif /* JSON_SERIALIZER_HPP */

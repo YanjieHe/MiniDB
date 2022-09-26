@@ -11,7 +11,6 @@ TEST_CASE("Test Buffer Manager", "[BufferManager]") {
   dbHeader.nPages = 0;
   dbHeader.pageSize = pageSize;
 
-  CreateEmptyDatabaseFile(path, dbHeader);
   BufferManager bufferManager(path, dbHeader);
 
   u16 bufferID0 = bufferManager.AllocatePage();

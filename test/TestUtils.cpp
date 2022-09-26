@@ -5,6 +5,7 @@
 #include <iostream>
 
 #include "Page.hpp"
+#include "JsonSerializer.hpp"
 
 using std::cout;
 using std::endl;
@@ -48,4 +49,18 @@ Buffer CreateBookPage() {
   }
   page.UpdateHeader(buffer);
   return buffer;
+}
+
+void DisplayBPlusTreePages(BufferManager &bufferManager, BPlusTree &tree) {
+  for (int pageNumber = 0; pageNumber < bufferManager.header.nPages;
+       pageNumber++) {
+    bufferManager.LoadBuffer(pageNumber, tree.sharedData.buffer);
+    IndexPage indexPage(tree.sharedData.columns, tree.sharedData.buffer,
+                        PAGE_SIZE);
+
+    cout << "page " << pageNumber << endl;
+    cout << std::setw(4) << JsonSerializer::BPlusTreePageToJson(
+                                indexPage, tree.sharedData.buffer)
+         << endl;
+  }
 }
