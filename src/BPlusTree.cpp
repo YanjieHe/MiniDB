@@ -116,19 +116,13 @@ BPlusTreeSharedData::BPlusTreeSharedData(int order,
                                          BufferManager &bufferManager,
                                          size_t pageSize,
                                          const vector<DBColumn> &columns)
-    : order{order},
-      bufferManager{bufferManager},
-      pageSize{pageSize},
-      buffer(pageSize),
-      columns{columns} {}
+    : order{order}, bufferManager{bufferManager}, pageSize{pageSize},
+      buffer(pageSize), columns{columns} {}
 
 /* create an empty B+ tree node page */
 BPlusTreeNode::BPlusTreeNode(BPlusTreeSharedData &sharedData)
-    : sharedData{sharedData},
-      pageID{sharedData.bufferManager.AllocatePage()},
-      isLeaf{false},
-      size{0},
-      indices(sharedData.order),
+    : sharedData{sharedData}, pageID{sharedData.bufferManager.AllocatePage()},
+      isLeaf{false}, size{0}, indices(sharedData.order),
       pointers(sharedData.order + 1) {
   for (size_t i = 0; i < pointers.size(); i++) {
     pointers.at(i) = -3;
@@ -143,12 +137,8 @@ BPlusTreeNode::BPlusTreeNode(BPlusTreeSharedData &sharedData)
 P1 | K1 | P2 | K2 | P3 | K3 | P4
 */
 BPlusTreeNode::BPlusTreeNode(BPlusTreeSharedData &sharedData, u16 pageID)
-    : sharedData{sharedData},
-      pageID{pageID},
-      isLeaf{false},
-      size{0},
-      indices(sharedData.order),
-      pointers(sharedData.order + 1) {
+    : sharedData{sharedData}, pageID{pageID}, isLeaf{false}, size{0},
+      indices(sharedData.order), pointers(sharedData.order + 1) {
   for (size_t i = 0; i < pointers.size(); i++) {
     pointers.at(i) = -4;
   }
@@ -198,8 +188,10 @@ void BPlusTree::Insert(const DBIndex &indexToInsert, i64 dataPointer) {
               make_shared<BPlusTreeNode>(sharedData, cursor->pointers.at(i));
           break;
         } else if (i == cursor->size - 1) {
-          cursor =
-              make_shared<BPlusTreeNode>(sharedData, cursor->pointers.at(i));
+          /* if the searching process reaches the end of the node, move the
+           * cursor to the page pointed by the rightmost pointer */
+          cursor = make_shared<BPlusTreeNode>(sharedData,
+                                              cursor->pointers.at(i + 1));
           break;
         } else {
           /* pass */
