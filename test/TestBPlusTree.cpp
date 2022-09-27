@@ -54,10 +54,10 @@ TEST_CASE("Integer Index B+ Tree Test", "[B+ Tree]") {
 
     BPlusTree tree(order, bufferManager, PAGE_SIZE, indexColumns);
     vector<std::pair<int, int>> keyValuePairs;
-    for (int i = 0; i < 40; i++) {
+    for (int i = 0; i < 15; i++) {
       int key = 56 + i;
       int value = (i + 1) * 10;
-      tree.Insert(DBIndex({key}), value);
+      tree.Insert(DBIndex({Int64Key(key)}), value);
       keyValuePairs.push_back({key, value});
     }
 
@@ -72,6 +72,9 @@ TEST_CASE("Integer Index B+ Tree Test", "[B+ Tree]") {
     DisplayBPlusTreePages(bufferManager, tree);
 
     bufferManager.UpdateDatabaseHeaderToDisk();
+
+    OutputBPlusTreeGraphvizCode("output/integer_b_plus_tree/BPlusTree.dot",
+                                bufferManager, tree);
 
     for (auto pair : keyValuePairs) {
       cout << "search key " << pair.first << endl;

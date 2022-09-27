@@ -3,6 +3,7 @@
 #include <catch2/catch.hpp>
 #include <iomanip>
 #include <iostream>
+#include <fstream>
 
 #include "Page.hpp"
 #include "JsonSerializer.hpp"
@@ -52,15 +53,63 @@ Buffer CreateBookPage() {
 }
 
 void DisplayBPlusTreePages(BufferManager &bufferManager, BPlusTree &tree) {
+  Json json;
+
   for (int pageNumber = 0; pageNumber < bufferManager.header.nPages;
        pageNumber++) {
     bufferManager.LoadBuffer(pageNumber, tree.sharedData.buffer);
     IndexPage indexPage(tree.sharedData.columns, tree.sharedData.buffer,
                         PAGE_SIZE);
-
-    cout << "page " << pageNumber << endl;
-    cout << std::setw(4) << JsonSerializer::BPlusTreePageToJson(
-                                indexPage, tree.sharedData.buffer)
-         << endl;
+    Json pageJson =
+        JsonSerializer::BPlusTreePageToJson(indexPage, tree.sharedData.buffer);
+    pageJson["page"] = pageNumber;
+    json[pageNumber] = pageJson;
   }
+
+  cout << std::setw(4) << json << endl;
+}
+
+void OutputBPlusTreeGraphvizCode(string outputPath,
+                                 BufferManager &bufferManager,
+                                 BPlusTree &tree) {
+  std::ofstream stream(outputPath);
+  stream << "digraph G {" << endl;
+  stream << "node [shape = record,height=.1];" << endl;
+  for (int pageNumber = 0; pageNumber < bufferManager.header.nPages;
+       pageNumber++) {
+    bufferManager.LoadBuffer(pageNumber, tree.sharedData.buffer);
+    IndexPage indexPage(tree.sharedData.columns, tree.sharedData.buffer,
+                        PAGE_SIZE);
+    Json pageJson =
+        JsonSerializer::BPlusTreePageToJson(indexPage, tree.sharedData.buffer);
+
+    int pointerCount = 0;
+    stream << "node" << pageNumber << "[label = \"";
+    for (auto item : pageJson["rows"]) {
+      if (item.is_number_integer()) {
+        stream << "<f" << pointerCount << "> ";
+        pointerCount++;
+      } else {
+        stream << "|" << item["keys"] << "|";
+      }
+    }
+    stream << "\"];" << endl;
+
+    pointerCount = 0;
+    for (auto item : pageJson["rows"]) {
+      if (item.is_number_integer()) {
+        int pointer = static_cast<int>(item);
+        if (pointer >= 0 &&
+            pageJson["header"]["pageType"] == "B_PLUS_TREE_NON_LEAF") {
+          stream << "\"node" << pageNumber << "\":f" << pointerCount
+                 << " -> \"node" << pointer << "\"" << endl;
+        }
+        pointerCount++;
+      } else {
+        /* pass */
+      }
+    }
+  }
+
+  stream << "}" << endl;
 }

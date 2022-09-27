@@ -29,3 +29,6 @@ vector<DBRow> BookRows();
 Buffer CreateBookPage();
 
 void DisplayBPlusTreePages(BufferManager &bufferManager, BPlusTree &tree);
+
+void OutputBPlusTreeGraphvizCode(string outputPath,
+                                 BufferManager &bufferManager, BPlusTree &tree);
