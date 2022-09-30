@@ -54,15 +54,15 @@ TEST_CASE("Integer Index B+ Tree Test", "[B+ Tree]") {
 
     BPlusTree tree(order, bufferManager, PAGE_SIZE, indexColumns);
     vector<std::pair<int, int>> keyValuePairs;
-    for (int i = 0; i < 15; i++) {
+    for (int i = 0; i < 100; i++) {
       int key = 56 + i;
       int value = (i + 1) * 10;
       tree.Insert(DBIndex({Int64Key(key)}), value);
       keyValuePairs.push_back({key, value});
     }
 
-    cout << std::setw(4)
-         << JsonSerializer::DatabaseHeaderToJson(bufferManager.header) << endl;
+    PrintFormattedJson(
+        JsonSerializer::DatabaseHeaderToJson(bufferManager.header));
 
     for (auto pair : keyValuePairs) {
       cout << "insert: { key : " << pair.first;
@@ -78,9 +78,8 @@ TEST_CASE("Integer Index B+ Tree Test", "[B+ Tree]") {
 
     for (auto pair : keyValuePairs) {
       cout << "search key " << pair.first << endl;
-      auto result = tree.Search(DBIndex({Int64Key(pair.first)}));
-      REQUIRE(bool(result));
-      REQUIRE(result.value() == pair.second);
+      REQUIRE(tree.Search(DBIndex({Int64Key(pair.first)})) ==
+              std::make_optional<i64>(pair.second));
     }
   }
 }

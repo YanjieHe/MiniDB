@@ -66,7 +66,7 @@ void DisplayBPlusTreePages(BufferManager &bufferManager, BPlusTree &tree) {
     json[pageNumber] = pageJson;
   }
 
-  cout << std::setw(4) << json << endl;
+  PrintFormattedJson(json);
 }
 
 void OutputBPlusTreeGraphvizCode(string outputPath,

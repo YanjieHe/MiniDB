@@ -7,11 +7,6 @@ using std::holds_alternative;
 using std::make_optional;
 using std::make_shared;
 
-#include <iostream>
-
-using std::cout;
-using std::endl;
-
 IndexPage::IndexPage(const vector<DBColumn> &columns, Buffer &buffer,
                      size_t pageSize)
     : header{EmptyIndexPageHeader(pageSize, PageType::B_PLUS_TREE_LEAF)},
@@ -124,9 +119,6 @@ BPlusTreeNode::BPlusTreeNode(BPlusTreeSharedData &sharedData)
     : sharedData{sharedData}, pageID{sharedData.bufferManager.AllocatePage()},
       isLeaf{false}, size{0}, indices(sharedData.order),
       pointers(sharedData.order + 1) {
-  for (size_t i = 0; i < pointers.size(); i++) {
-    pointers.at(i) = -3;
-  }
   sharedData.buffer.Clear();
   sharedData.buffer.SaveHeader(EmptyIndexPageHeader(
       sharedData.pageSize, PageType::B_PLUS_TREE_NON_LEAF));
@@ -139,9 +131,6 @@ P1 | K1 | P2 | K2 | P3 | K3 | P4
 BPlusTreeNode::BPlusTreeNode(BPlusTreeSharedData &sharedData, u16 pageID)
     : sharedData{sharedData}, pageID{pageID}, isLeaf{false}, size{0},
       indices(sharedData.order), pointers(sharedData.order + 1) {
-  for (size_t i = 0; i < pointers.size(); i++) {
-    pointers.at(i) = -4;
-  }
   sharedData.bufferManager.LoadBuffer(pageID, sharedData.buffer);
   IndexPage indexPage(sharedData.columns, sharedData.buffer,
                       sharedData.pageSize);
@@ -365,7 +354,6 @@ void BPlusTree::InsertInternal(const DBIndex &indexToInsert,
     }
     /* insert the index */
     virtualIndices.at(i) = indexToInsert;
-    // virtualPointers.at(i) = -2;
     /* insert the pointer */
     virtualPointers.at(i + 1) = child->pageID;
 
