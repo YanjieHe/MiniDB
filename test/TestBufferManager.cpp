@@ -5,11 +5,10 @@
 
 TEST_CASE("Test Buffer Manager", "[BufferManager]") {
   string path = "output/test_buffer_manager";
-  i64 pageSize = 255;
-  Buffer buffer(pageSize);
+  Buffer buffer(PAGE_SIZE);
   DatabaseHeader dbHeader;
   dbHeader.nPages = 0;
-  dbHeader.pageSize = pageSize;
+  dbHeader.pageSize = PAGE_SIZE;
 
   BufferManager bufferManager(path, dbHeader);
 
