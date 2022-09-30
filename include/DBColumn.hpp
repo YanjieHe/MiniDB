@@ -5,7 +5,7 @@
 enum class TypeTag { INTEGER, REAL, TEXT, BLOB };
 
 class DBColumn {
-public:
+ public:
   bool nullable;
   TypeTag type;
   string name;
@@ -16,6 +16,4 @@ public:
 };
 
 u16 ComputeRowSize(const DBRow &row, const vector<DBColumn> &columns);
-
-json DBColumnToJson(const DBColumn& column);
-#endif // DBCOLUMN_HPP
+#endif  // DBCOLUMN_HPP

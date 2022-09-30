@@ -1,6 +1,6 @@
 #include "DBColumn.hpp"
+
 #include "DBException.hpp"
-#include <magic_enum/magic_enum.hpp>
 
 using std::holds_alternative;
 
@@ -10,52 +10,48 @@ u16 ComputeRowSize(const DBRow &row, const vector<DBColumn> &columns) {
     const auto &column = columns.at(i);
     const auto &value = row.values.at(i);
     switch (column.type) {
-    case TypeTag::INTEGER: {
-      if (column.nullable) {
-        if (holds_alternative<monostate>(value)) {
-          totalSize = totalSize + 1;
+      case TypeTag::INTEGER: {
+        if (column.nullable) {
+          if (holds_alternative<monostate>(value)) {
+            totalSize = totalSize + 1;
+          } else {
+            totalSize = totalSize + 1 + sizeof(i64);
+          }
         } else {
-          totalSize = totalSize + 1 + sizeof(i64);
+          totalSize = totalSize + sizeof(i64);
         }
-      } else {
-        totalSize = totalSize + sizeof(i64);
+        break;
       }
-      break;
-    }
-    case TypeTag::REAL: {
-      if (column.nullable) {
-        if (holds_alternative<monostate>(value)) {
-          totalSize = totalSize + 1;
+      case TypeTag::REAL: {
+        if (column.nullable) {
+          if (holds_alternative<monostate>(value)) {
+            totalSize = totalSize + 1;
+          } else {
+            totalSize = totalSize + 1 + sizeof(f64);
+          }
         } else {
-          totalSize = totalSize + 1 + sizeof(f64);
+          totalSize = totalSize + sizeof(f64);
         }
-      } else {
-        totalSize = totalSize + sizeof(f64);
+        break;
       }
-      break;
-    }
-    case TypeTag::TEXT: {
-      if (column.nullable) {
-        if (holds_alternative<monostate>(value)) {
-          totalSize = totalSize + 1;
+      case TypeTag::TEXT: {
+        if (column.nullable) {
+          if (holds_alternative<monostate>(value)) {
+            totalSize = totalSize + 1;
+          } else {
+            const auto &s = std::get<string>(value);
+            totalSize = totalSize + sizeof(u16) + s.size();
+          }
         } else {
           const auto &s = std::get<string>(value);
           totalSize = totalSize + sizeof(u16) + s.size();
         }
-      } else {
-        const auto &s = std::get<string>(value);
-        totalSize = totalSize + sizeof(u16) + s.size();
+        break;
       }
-      break;
-    }
-    default: { throw DBException("BLOB type is not supported"); }
+      default: {
+        throw DBException("BLOB type is not supported");
+      }
     }
   }
   return totalSize;
-}
-
-json DBColumnToJson(const DBColumn &column) {
-  return {{"name", column.name},
-          {"type", magic_enum::enum_name(column.type)},
-          {"nullable", column.nullable}};
 }

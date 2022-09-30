@@ -1,6 +1,11 @@
 #include "Buffer.hpp"
-#include "DBException.hpp"
+
 #include <bit_converter/bit_converter.hpp>
+#include <cstring>
+
+#include "DBException.hpp"
+
+using std::holds_alternative;
 
 u8 Buffer::ReadU8() {
   u8 u = bytes.at(pos);
@@ -52,7 +57,7 @@ void Buffer::WriteText(const string s) {
   pos = pos + s.size();
 }
 
-DBRow Buffer::ReadRecord(vector<DBColumn> &columns) {
+DBRow Buffer::ReadRecord(const vector<DBColumn> &columns) {
   DBRow record;
   record.values.reserve(columns.size());
   for (const auto &col : columns) {
@@ -66,51 +71,107 @@ DBRow Buffer::ReadRecord(vector<DBColumn> &columns) {
       ReadRecordFieldValue(record, col);
     }
   }
-  record.loaded = true;
   return record;
 }
 
-void Buffer::ReadRecordFieldValue(DBRow& record, const DBColumn &col) {
+void Buffer::ReadRecordFieldValue(DBRow &record, const DBColumn &col) {
   switch (col.type) {
-  case TypeTag::INTEGER: {
-    i64 i = ReadI64();
-    record.values.emplace_back(i);
-    break;
-  }
-  case TypeTag::REAL: {
-    f64 f = ReadF64();
-    record.values.emplace_back(f);
-    break;
-  }
-  case TypeTag::TEXT: {
-    u16 size = ReadU16();
-    string s(bytes.begin() + pos, bytes.begin() + pos + size);
-    pos = pos + size;
-    record.values.emplace_back(s);
-    break;
-  }
-  default: { throw DBException("BLOB type is not supported yet"); }
+    case TypeTag::INTEGER: {
+      i64 i = ReadI64();
+      record.values.emplace_back(i);
+      break;
+    }
+    case TypeTag::REAL: {
+      f64 f = ReadF64();
+      record.values.emplace_back(f);
+      break;
+    }
+    case TypeTag::TEXT: {
+      u16 size = ReadU16();
+      string s(bytes.begin() + pos, bytes.begin() + pos + size);
+      pos = pos + size;
+      record.values.emplace_back(s);
+      break;
+    }
+    default: {
+      throw DBException("BLOB type is not supported yet");
+    }
   }
 }
 
-void LoadHeader(Buffer &buffer, PageHeader &header) {
-  header.pageType = static_cast<PageType>(buffer.ReadU8());
-  header.numOfEntries = buffer.ReadU16();
-  header.endOfFreeSpace = buffer.ReadU16();
+void Buffer::WriteRecord(const vector<DBColumn> &columns, const DBRow &record) {
+  auto WriteValue = [this, &columns, &record](int i) {
+    switch (columns.at(i).type) {
+      case TypeTag::INTEGER: {
+        WriteI64(std::get<i64>(record.values.at(i)));
+        break;
+      }
+      case TypeTag::REAL: {
+        WriteF64(std::get<f64>(record.values.at(i)));
+        break;
+      }
+      case TypeTag::TEXT: {
+        auto text = std::get<string>(record.values.at(i));
+        WriteU16(static_cast<u16>(text.size()));
+        WriteText(text);
+        break;
+      }
+      default: {
+        throw DBException("BLOB type is not supported yet");
+      }
+    }
+  };
+  for (size_t i = 0; i < columns.size(); i++) {
+    if (columns.at(i).nullable) {
+      if (holds_alternative<monostate>(record.values.at(i))) {
+        WriteU8(1);
+      } else {
+        WriteU8(0);
+      }
+      WriteValue(i);
+    } else {
+      WriteValue(i);
+    }
+  }
+}
+
+void Buffer::LoadHeader(PageHeader &header) {
+  header.pageType = static_cast<PageType>(ReadU8());
+  header.numOfEntries = ReadU16();
+  header.endOfFreeSpace = ReadU16();
   header.recordInfoArray.reserve(header.numOfEntries);
   for (size_t i = 0; i < header.numOfEntries; i++) {
-    u16 location = buffer.ReadU16();
-    u16 size = buffer.ReadU16();
+    u16 location = ReadU16();
+    u16 size = ReadU16();
     header.recordInfoArray.emplace_back(location, size);
   }
 }
 
-void SaveHeader(Buffer &buffer, const PageHeader &header) {
-  buffer.WriteU8(static_cast<u8>(header.pageType));
-  buffer.WriteU16(header.numOfEntries);
-  buffer.WriteU16(header.endOfFreeSpace);
+void Buffer::SaveHeader(const PageHeader &header) {
+  WriteU8(static_cast<u8>(header.pageType));
+  WriteU16(header.numOfEntries);
+  WriteU16(header.endOfFreeSpace);
   for (const auto &recordInfo : header.recordInfoArray) {
-    buffer.WriteU16(recordInfo.location);
-    buffer.WriteU16(recordInfo.size);
+    WriteU16(recordInfo.location);
+    WriteU16(recordInfo.size);
+  }
+}
+
+void Buffer::MoveBlock(size_t srcStart, size_t size, size_t destStart) {
+  vector<u8> temporaryBytes(size);
+  std::memcpy(temporaryBytes.data(), bytes.data() + srcStart, size);
+  std::memcpy(bytes.data() + destStart, temporaryBytes.data(), size);
+}
+
+void Buffer::PreserveBufferPos(std::function<void()> action) {
+  auto currentPos = pos;
+  action();
+  pos = currentPos;
+}
+
+void Buffer::Clear() {
+  pos = 0;
+  for (auto &b : bytes) {
+    b = 0;
   }
 }
