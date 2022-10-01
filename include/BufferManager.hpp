@@ -4,21 +4,24 @@
 
 #define DATABASE_HEADER_FILENAME "DATABASE_HEADER.json"
 
+const size_t EXTENT_SIZE = 65536;
+const size_t N_PAGES_IN_AN_EXTENT = 8;
+
 class BufferManager {
- public:
+public:
   string directoryPath;
   DatabaseHeader header;
 
   BufferManager(string directoryPath, DatabaseHeader header);
 
-  void LoadBuffer(u16 bufferID, Buffer &buffer);
-  void SaveBuffer(u16 bufferID, Buffer &buffer);
+  void LoadPage(u16 pageId, Buffer &buffer);
+  void SavePage(u16 pageId, Buffer &buffer);
   u16 AllocatePage();
-  size_t PageStart(u16 bufferID) const;
   void UpdateDatabaseHeaderToDisk();
+  void LoadDatabaseHeaderFromDisk();
 
- private:
-  string BufferFilePath(u16 bufferID) const;
+private:
+  string ExtentFilePath(u16 pageId) const;
 };
 
-#endif  // BUFFER_MANAGER_HPP
+#endif // BUFFER_MANAGER_HPP

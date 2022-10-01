@@ -5,12 +5,12 @@
 #include "Page.hpp"
 #include "TestUtils.hpp"
 
-vector<json> LoadPage(BufferManager& bufferManager, u16 bufferID);
+vector<json> LoadPage(BufferManager& bufferManager, u16 pageID);
 
-vector<json> LoadPage(BufferManager& bufferManager, u16 bufferID) {
+vector<json> LoadPage(BufferManager& bufferManager, u16 pageID) {
   vector<DBColumn> columns = BookDataColumns();
   Buffer buffer(PAGE_SIZE);
-  bufferManager.LoadBuffer(bufferID, buffer);
+  bufferManager.LoadPage(pageID, buffer);
   Page page(columns, buffer, PAGE_SIZE);
   REQUIRE(page.header.pageType == PageType::TABLE);
 
@@ -26,15 +26,13 @@ TEST_CASE("Test Page", "[Page]") {
   Buffer buffer = CreateBookPage();
   auto columns = BookDataColumns();
   DatabaseHeader dbHeader;
-  dbHeader.nPages = 0;
-  dbHeader.pageSize = PAGE_SIZE;
 
   SECTION("Example Page") {
     string path = "output/example_page";
 
     BufferManager bufferManager(path, dbHeader);
     u16 pageID = bufferManager.AllocatePage();
-    bufferManager.SaveBuffer(pageID, buffer);
+    bufferManager.SavePage(pageID, buffer);
 
     auto rows = LoadPage(bufferManager, pageID);
     REQUIRE(rows == vector<json>{{"The Red and the Black", 1830},
@@ -52,7 +50,7 @@ TEST_CASE("Test Page", "[Page]") {
 
     BufferManager bufferManager(path, dbHeader);
     u16 pageID = bufferManager.AllocatePage();
-    bufferManager.SaveBuffer(pageID, buffer);
+    bufferManager.SavePage(pageID, buffer);
 
     auto rows = LoadPage(bufferManager, pageID);
     REQUIRE(rows == vector<json>{{"The Red and the Black", 1830},
@@ -71,7 +69,7 @@ TEST_CASE("Test Page", "[Page]") {
 
     BufferManager bufferManager(path, dbHeader);
     u16 pageID = bufferManager.AllocatePage();
-    bufferManager.SaveBuffer(pageID, buffer);
+    bufferManager.SavePage(pageID, buffer);
 
     auto rows = LoadPage(bufferManager, pageID);
     REQUIRE(rows == vector<json>{{"The Red and the Black", 1830},
@@ -88,7 +86,7 @@ TEST_CASE("Test Page", "[Page]") {
 
     BufferManager bufferManager(path, dbHeader);
     u16 pageID = bufferManager.AllocatePage();
-    bufferManager.SaveBuffer(pageID, buffer);
+    bufferManager.SavePage(pageID, buffer);
 
     auto rows = LoadPage(bufferManager, pageID);
     REQUIRE(rows == vector<json>{{"The Red and the Black", 1830}});
