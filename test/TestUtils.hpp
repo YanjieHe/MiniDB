@@ -8,8 +8,6 @@
 
 using nlohmann::json;
 
-const size_t PAGE_SIZE = 256;
-
 void PrintFormattedJson(json jsonObj);
 
 DBRow::Value DBString(string s);

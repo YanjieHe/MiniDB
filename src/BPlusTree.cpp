@@ -74,8 +74,8 @@ void IndexPage::Store(const BPlusTreeNode *node) {
   header.endOfFreeSpace = curPos;
   node->sharedData.buffer.Clear();
   node->sharedData.buffer.SaveHeader(header);
-  node->sharedData.bufferManager.SaveBuffer(node->pageID,
-                                            node->sharedData.buffer);
+  node->sharedData.bufferManager.SavePage(node->pageID,
+                                          node->sharedData.buffer);
   for (size_t i = 0; i < header.recordInfoArray.size(); i++) {
     if (i % 2 == 0) {
       /* pointer */
@@ -99,8 +99,8 @@ void IndexPage::Store(const BPlusTreeNode *node) {
     }
   }
 
-  node->sharedData.bufferManager.SaveBuffer(node->pageID,
-                                            node->sharedData.buffer);
+  node->sharedData.bufferManager.SavePage(node->pageID,
+                                          node->sharedData.buffer);
 }
 
 const PageHeader &IndexPage::Header() const { return header; }
@@ -122,7 +122,7 @@ BPlusTreeNode::BPlusTreeNode(BPlusTreeSharedData &sharedData)
   sharedData.buffer.Clear();
   sharedData.buffer.SaveHeader(EmptyIndexPageHeader(
       sharedData.pageSize, PageType::B_PLUS_TREE_NON_LEAF));
-  sharedData.bufferManager.SaveBuffer(pageID, sharedData.buffer);
+  sharedData.bufferManager.SavePage(pageID, sharedData.buffer);
 }
 
 /* An example of a B+ tree node:
@@ -131,7 +131,7 @@ P1 | K1 | P2 | K2 | P3 | K3 | P4
 BPlusTreeNode::BPlusTreeNode(BPlusTreeSharedData &sharedData, u16 pageID)
     : sharedData{sharedData}, pageID{pageID}, isLeaf{false}, size{0},
       indices(sharedData.order), pointers(sharedData.order + 1) {
-  sharedData.bufferManager.LoadBuffer(pageID, sharedData.buffer);
+  sharedData.bufferManager.LoadPage(pageID, sharedData.buffer);
   IndexPage indexPage(sharedData.columns, sharedData.buffer,
                       sharedData.pageSize);
   this->isLeaf = indexPage.header.pageType == PageType::B_PLUS_TREE_LEAF;

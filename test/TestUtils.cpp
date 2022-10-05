@@ -57,7 +57,7 @@ void DisplayBPlusTreePages(BufferManager &bufferManager, BPlusTree &tree) {
 
   for (int pageNumber = 0; pageNumber < bufferManager.header.nPages;
        pageNumber++) {
-    bufferManager.LoadBuffer(pageNumber, tree.sharedData.buffer);
+    bufferManager.LoadPage(pageNumber, tree.sharedData.buffer);
     IndexPage indexPage(tree.sharedData.columns, tree.sharedData.buffer,
                         PAGE_SIZE);
     Json pageJson =
@@ -74,10 +74,10 @@ void OutputBPlusTreeGraphvizCode(string outputPath,
                                  BPlusTree &tree) {
   std::ofstream stream(outputPath);
   stream << "digraph G {" << endl;
-  stream << "node [shape = record,height=.1];" << endl;
+  stream << "node [shape = record, height = 0.1];" << endl;
   for (int pageNumber = 0; pageNumber < bufferManager.header.nPages;
        pageNumber++) {
-    bufferManager.LoadBuffer(pageNumber, tree.sharedData.buffer);
+    bufferManager.LoadPage(pageNumber, tree.sharedData.buffer);
     IndexPage indexPage(tree.sharedData.columns, tree.sharedData.buffer,
                         PAGE_SIZE);
     Json pageJson =

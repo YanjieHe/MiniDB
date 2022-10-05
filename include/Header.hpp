@@ -15,7 +15,7 @@ using f64 = double_t;
 using std::vector;
 
 class DBRowInfo {
- public:
+public:
   u16 location;
   u16 size;
   DBRowInfo() = default;
@@ -29,7 +29,7 @@ enum class PageType {
 };
 
 class PageHeader {
- public:
+public:
   PageType pageType;
   u16 numOfEntries;
   u16 endOfFreeSpace;
@@ -37,23 +37,22 @@ class PageHeader {
 
   PageHeader(PageType pageType, u16 numOfEntries, u16 endOfFreeSpace,
              const vector<DBRowInfo> &recordInfoArray)
-      : pageType{pageType},
-        numOfEntries{numOfEntries},
-        endOfFreeSpace{endOfFreeSpace},
-        recordInfoArray{recordInfoArray} {}
+      : pageType{pageType}, numOfEntries{numOfEntries},
+        endOfFreeSpace{endOfFreeSpace}, recordInfoArray{recordInfoArray} {}
   size_t ByteSize() const {
     return sizeof(u8) + sizeof(u16) * 2 + sizeof(u16) * 2 * numOfEntries;
   }
 };
 
 class DatabaseHeader {
- public:
-  i64 pageSize;
+public:
   u16 nPages;
 
-  size_t ByteSize() const { return sizeof(pageSize) + sizeof(nPages); }
+  DatabaseHeader() : nPages{0} {}
+
+  size_t ByteSize() const { return sizeof(nPages); }
 };
 
 PageHeader EmptyTablePageHeader(size_t pageSize);
 PageHeader EmptyIndexPageHeader(size_t pageSize, PageType pageType);
-#endif  // HEADER_HPP
+#endif // HEADER_HPP

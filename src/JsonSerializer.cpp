@@ -97,6 +97,10 @@ Json JsonSerializer::BPlusTreeIndexToJson(const DBIndex &index) {
 Json JsonSerializer::DatabaseHeaderToJson(const DatabaseHeader &header) {
   Json headerJson;
   headerJson["nPages"] = header.nPages;
-  headerJson["pageSize"] = header.pageSize;
   return headerJson;
+}
+
+void JsonSerializer::JsonToDatabaseHeader(const Json &json,
+                                          DatabaseHeader &header) {
+  header.nPages = json["nPages"];
 }

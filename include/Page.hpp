@@ -2,6 +2,9 @@
 #define MINIDB_PAGE_HPP
 #include "Buffer.hpp"
 
+/* The size of every page is 8KB. */
+const size_t PAGE_SIZE = 8192;
+
 class IPage {
  public:
   virtual const PageHeader &Header() const = 0;
