@@ -36,13 +36,15 @@ void BufferManager::LoadPage(u16 pageId, Buffer &buffer) {
 
 void BufferManager::SavePage(u16 pageId, Buffer &buffer) {
   if (pageId < header.nPages) {
+    size_t offset = (pageId % N_PAGES_IN_AN_EXTENT) * PAGE_SIZE;
 
     ifstream reader(ExtentFilePath(pageId), std::ios::binary);
     vector<u8> entireFile(EXTENT_SIZE);
-    reader.read(reinterpret_cast<char *>(entireFile.data()), entireFile.size());
+    reader.read(reinterpret_cast<char *>(entireFile.data()), offset);
+    reader.seekg(offset + PAGE_SIZE);
+    reader.read(reinterpret_cast<char*>(entireFile.data()+offset+PAGE_SIZE), EXTENT_SIZE - (offset + PAGE_SIZE));
     reader.close();
 
-    size_t offset = (pageId % N_PAGES_IN_AN_EXTENT) * PAGE_SIZE;
     for (size_t i = 0; i < buffer.bytes.size(); i++) {
       entireFile.at(i + offset) = buffer.bytes.at(i);
     }
